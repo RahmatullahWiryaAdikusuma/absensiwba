@@ -8,9 +8,11 @@ use App\Models\User;
 use App\Models\Attendance;
 use App\Models\Schedule;
 use App\Models\Leave;
-use Auth;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
+// === WAJIB ADA BARIS INI UNTUK NOTIFIKASI ===
+use Filament\Notifications\Notification; 
 
 class AttendanceController extends Controller
 {
@@ -52,7 +54,9 @@ class AttendanceController extends Controller
         $schedule = Schedule::with(['office', 'shift'])
                         ->where('user_id', auth()->user()->id)
                         ->first();
+        
         $today = Carbon::today()->format('Y-m-d');
+        
         $approvedLeave = Leave::where('user_id', Auth::user()->id)
                             ->where('status', 'approved')
                             ->whereDate('start_date', '<=', $today)
@@ -67,7 +71,7 @@ class AttendanceController extends Controller
             ]);
         }
 
-        if ($schedule->is_banned) {
+        if ($schedule && $schedule->is_banned) {
             return response()->json([
                 'success' => false,
                 'message' => 'You are banned',
@@ -80,11 +84,10 @@ class AttendanceController extends Controller
                 'data' => $schedule
             ]);
         }
-
     }
 
     public function store(Request $request)
-    {
+    { 
         $validator = Validator::make($request->all(), [
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric'
@@ -98,10 +101,12 @@ class AttendanceController extends Controller
             ], 422);
         }
 
-        $schedule = Schedule::where('user_id', Auth::user()->id)->first();
-
+        $user = Auth::user(); // Ambil data user
+        $userId = $user->id;
+        $schedule = Schedule::with(['office', 'shift'])->where('user_id', $userId)->first();
         $today = Carbon::today()->format('Y-m-d');
-        $approvedLeave = Leave::where('user_id', Auth::user()->id)
+
+        $approvedLeave = Leave::where('user_id', $userId)
                             ->where('status', 'approved')
                             ->whereDate('start_date', '<=', $today)
                             ->whereDate('end_date', '>=', $today)
@@ -116,33 +121,86 @@ class AttendanceController extends Controller
         }
 
         if ($schedule) {
-            $attedance = Attendance::where('user_id', Auth::user()->id)
-                            ->whereDate('created_at', date('Y-m-d'))->first();
-            if (!$attedance) {
-                $attedance = Attendance::create([
-                    'user_id' => Auth::user()->id,
+            $attendance = Attendance::where('user_id', $userId)
+                            ->whereDate('created_at', $today)
+                            ->first();
+
+            // Ambil semua Admin untuk dikirimi notifikasi
+            $admins = User::role('super_admin')->get();
+
+            if (!$attendance) {
+                // === ABSEN MASUK ===
+                $attendance = Attendance::create([
+                    'user_id' => $userId,
                     'schedule_latitude' => $schedule->office->latitude,
                     'schedule_longitude' => $schedule->office->longitude,
                     'schedule_start_time' => $schedule->shift->start_time,
                     'schedule_end_time' => $schedule->shift->end_time,
                     'start_latitude' => $request->latitude,
                     'start_longitude' => $request->longitude,
-                    'start_time' => Carbon::now()->toTimeString(),
-                    'end_time' => "",
+                    'start_time' => now(),
+                    'end_time' => null,
+                    'end_latitude' => null,
+                    'end_longitude' => null,
                 ]);
-            } else {
-                $attedance->update([
+
+                // 1. KIRIM NOTIF KE KARYAWAN (KONFIRMASI)
+                Notification::make()
+                    ->title('Absen Masuk Berhasil')
+                    ->body("Selamat bekerja! Absen tercatat pukul " . now()->format('H:i'))
+                    ->success()
+                    ->sendToDatabase($user);
+
+                // 2. KIRIM NOTIF KE ADMIN (MONITORING)
+                Notification::make()
+                    ->title('Karyawan Masuk')
+                    ->body("{$user->name} baru saja absen masuk.")
+                    ->info()
+                    ->sendToDatabase($admins);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Absen masuk berhasil',
+                    'data' => $attendance
+                ]);
+
+            } else { 
+                // === ABSEN PULANG ===
+                if ($attendance->end_time !== null) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Anda sudah melakukan absen pulang hari ini',
+                        'data' => null
+                    ], 400);
+                }
+
+                $attendance->update([
                     'end_latitude' => $request->latitude,
                     'end_longitude' => $request->longitude,
-                    'end_time' => Carbon::now()->toTimeString(),
+                    'end_time' => now(),
+                ]);
+
+                // 1. KIRIM NOTIF KE KARYAWAN
+                Notification::make()
+                    ->title('Absen Pulang Berhasil')
+                    ->body("Hati-hati di jalan! Absen pulang tercatat pukul " . now()->format('H:i'))
+                    ->success()
+                    ->sendToDatabase($user);
+
+                // 2. KIRIM NOTIF KE ADMIN
+                Notification::make()
+                    ->title('Karyawan Pulang')
+                    ->body("{$user->name} baru saja absen pulang.")
+                    ->warning()
+                    ->sendToDatabase($admins);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Absen pulang berhasil',
+                    'data' => $attendance
                 ]);
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Success store attendance',
-                'data' => $attedance
-            ]);
         } else {
             return response()->json([
                 'success' => false,
@@ -186,7 +244,6 @@ class AttendanceController extends Controller
             'data' => $attendanceList,
             'message' => 'Success get attendance by month and year'
         ]);
-
     }
 
     public function banned()
@@ -214,7 +271,4 @@ class AttendanceController extends Controller
             'data' => $user->image_url
         ]);
     }
-
-
-
 }

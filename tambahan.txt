@@ -6,3 +6,7 @@ tambah:
 -izin cuti -> upload surat (null)
 jatah cuti 12
 -upload gambar (datang, pulang) 
+
+buat 2 tabel :
+- titik lokasi -> latitude
+- lokasi penempatan - tanpa latitude

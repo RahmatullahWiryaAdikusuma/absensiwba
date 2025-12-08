@@ -15,22 +15,20 @@ public function up()
         $table->id();
         $table->foreignId('user_id')->constrained()->onDelete('cascade');
 
-        // Data Jadwal (Tetap wajib ada)
+        
         $table->double('schedule_latitude');
         $table->double('schedule_longitude');
         $table->time('schedule_start_time');
         $table->time('schedule_end_time');
-
-        // Data Absen Masuk (Wajib ada)
+ 
         $table->double('start_latitude');
         $table->double('start_longitude');
         $table->datetime('start_time');
 
-        // Data Absen Pulang (HARUS NULLABLE / Boleh Kosong)
-        // KARENA SAAT ABSEN MASUK, DATA INI BELUM ADA
-        $table->double('end_latitude')->nullable();  // <--- Tambah ->nullable()
-        $table->double('end_longitude')->nullable(); // <--- Tambah ->nullable()
-        $table->datetime('end_time')->nullable();        // <--- Tambah ->nullable()
+        
+        $table->double('end_latitude')->nullable();   
+        $table->double('end_longitude')->nullable();  
+        $table->datetime('end_time')->nullable();        
 
         $table->timestamps();
         $table->softDeletes();

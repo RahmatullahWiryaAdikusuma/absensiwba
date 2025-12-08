@@ -14,10 +14,6 @@ class DatabaseSeeder extends Seeder
     {
        
         $roleSuperAdmin = Role::firstOrCreate(['name' => 'super_admin']);
-  
-        $roleGM       = Role::firstOrCreate(['name' => 'general_manager']);
-        $roleKeuangan = Role::firstOrCreate(['name' => 'keuangan']);
-        $roleAdmin    = Role::firstOrCreate(['name' => 'admin']);
         $roleKaryawan = Role::firstOrCreate(['name' => 'karyawan']); 
 
         $superAdmin = User::firstOrCreate(
@@ -33,24 +29,6 @@ class DatabaseSeeder extends Seeder
         if ($permissions->count() > 0) {
             $roleSuperAdmin->syncPermissions($permissions);
         }
- 
-        $gm = User::firstOrCreate(
-            ['email' => 'gm@kantor.com'],
-            [
-                'name' => 'Bapak GM',
-                'password' => Hash::make('password123'),
-            ]
-        );
-        $gm->syncRoles([$roleGM]);
-
-        $admin = User::firstOrCreate(
-            ['email' => 'admin@kantor.com'],
-            [
-                'name' => 'Admin Sistem',
-                'password' => Hash::make('password123'),
-            ]
-        );
-        $admin->syncRoles([$roleAdmin]);
 
         $satpam = User::firstOrCreate(
             ['email' => 'satpam@kantor.com'],

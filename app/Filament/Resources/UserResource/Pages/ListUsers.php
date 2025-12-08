@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\UserResource\Pages;
 
 use App\Filament\Resources\UserResource;
-use Filament\Actions;
+use Filament\Actions; // <--- INI YANG BENAR BUAT HALAMAN
 use Filament\Resources\Pages\ListRecords;
+use Filament\Notifications\Notification;
+use App\Models\User;
 
 class ListUsers extends ListRecords
 {
@@ -14,6 +16,16 @@ class ListUsers extends ListRecords
     {
         return [
             Actions\CreateAction::make(),
+
+            // Perhatikan pakai 'Actions\Action', BUKAN 'Tables\Actions'
+            Actions\Action::make('resetCuti') 
+                ->label('Reset Cuti (12)')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->action(function () {
+                    User::query()->update(['leave_balance' => 12]);
+                    Notification::make()->title('Reset Berhasil')->success()->send();
+                }),
         ];
     }
 }
