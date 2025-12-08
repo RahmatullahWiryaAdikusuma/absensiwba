@@ -1,0 +1,8 @@
+fungsi  sama seperti absensi lama
+
+tambah: 
+
+-izin biasa -> upload surat (notnull)
+-izin cuti -> upload surat (null)
+jatah cuti 12
+-upload gambar (datang, pulang) 
