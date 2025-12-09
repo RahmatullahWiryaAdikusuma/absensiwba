@@ -5,9 +5,11 @@ namespace App\Filament\Resources\LeaveResource\Pages;
 use App\Filament\Resources\LeaveResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
-use Filament\Notifications\Notification;
+use Filament\Notifications\Notification; // Ini hanya untuk notif popup ke Admin sendiri
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+// === IMPORT EVENT ===
+use App\Events\LeaveStatusUpdated;
 
 class EditLeave extends EditRecord
 {
@@ -20,51 +22,34 @@ class EditLeave extends EditRecord
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        // LOGIKA POTONG CUTI
-        if ($record->status !== 'approved' && $data['status'] === 'approved') {
+        $oldStatus = $record->status;
+
+        // 1. Logic Potong Cuti (Jika Approved)
+        if ($oldStatus !== 'approved' && $data['status'] === 'approved') {
             $user = $record->user;
-            
             $start = Carbon::parse($data['start_date']);
             $end = Carbon::parse($data['end_date']);
             $daysRequested = $start->diffInDays($end) + 1; 
 
             if ($user->leave_balance < $daysRequested) {
                 Notification::make()
-                    ->title('Gagal: Saldo Cuti Kurang!')
-                    ->body("Sisa: {$user->leave_balance}, Diminta: {$daysRequested}")
+                    ->title('Gagal: Saldo Kurang!')
                     ->danger()->persistent()->send();
                 $this->halt(); 
             }
 
             $user->decrement('leave_balance', $daysRequested);
-            $user->refresh();
-
-            // Notif Popup Sukses buat Admin
-            Notification::make()
-                ->title('Berhasil Disetujui')
-                ->body("Sisa cuti user sekarang: {$user->leave_balance} hari.")
-                ->success()->send();
+            // Notif Popup sesaat untuk Admin yang sedang klik
+            Notification::make()->title('Cuti Disetujui & Saldo Terpotong')->success()->send();
         }
 
-        // SIMPAN DATA
+        // 2. Simpan Data
         $record->update($data);
 
-        // === NOTIFIKASI KE KARYAWAN (Sesuai Status) ===
-        $pegawai = $record->user;
-
-        if ($data['status'] === 'approved') {
-             Notification::make()
-                ->title('Cuti Disetujui ✅')
-                ->body("Pengajuan cuti Anda untuk tanggal {$data['start_date']} telah disetujui.")
-                ->success()
-                ->sendToDatabase($pegawai); 
-        
-        } elseif ($data['status'] === 'rejected') {
-             Notification::make()
-                ->title('Cuti Ditolak ❌')
-                ->body("Maaf, pengajuan cuti Anda ditolak. Alasan: " . ($data['note'] ?? '-'))
-                ->danger()
-                ->sendToDatabase($pegawai);
+        // 3. 🔥 TRIGGER EVENT JIKA STATUS BERUBAH
+        // Biarkan Listener yang mengirim notif Lonceng ke Karyawan
+        if ($oldStatus !== $data['status']) {
+            event(new LeaveStatusUpdated($record));
         }
 
         return $record;

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Notifications\Notification;
 use Filament\Notifications\Actions\Action;
 use App\Models\User;
+use App\Events\LeaveRequested;
 
 class CreateLeave extends CreateRecord
 {
@@ -21,25 +22,10 @@ class CreateLeave extends CreateRecord
         return $data;
     }
 
-    // === TAMBAHAN PENTING: AFTER CREATE ===
+    // === TRIGGER EVENT SETELAH DATA TERBUAT ===
     protected function afterCreate(): void
     {
-        $leave = $this->record;
-        
-        // Cari semua Super Admin
-        $admins = User::role('super_admin')->get();
-
-        // Kirim Notifikasi ke Lonceng Admin
-        Notification::make()
-            ->title('Pengajuan Cuti Baru')
-            ->body("**{$leave->user->name}** mengajukan cuti: {$leave->start_date} s/d {$leave->end_date}.")
-            ->warning()
-            ->actions([
-                Action::make('review')
-                    ->button()
-                    ->label('Cek')
-                    ->url(LeaveResource::getUrl('edit', ['record' => $leave])),
-            ])
-            ->sendToDatabase($admins);
+        // Panggil Event, biarkan Listener yang kirim notif ke semua Super Admin
+        event(new LeaveRequested($this->record));
     }
 }
