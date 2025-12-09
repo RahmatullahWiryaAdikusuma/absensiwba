@@ -84,4 +84,9 @@ class ActivityLogResource extends Resource
             'index' => Pages\ManageActivityLogs::route('/'),
         ];
     }
+
+    public static function canViewAny(): bool
+    {
+        return Auth::user()->hasRole('super_admin');
+    }
 }

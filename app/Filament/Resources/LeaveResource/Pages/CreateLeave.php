@@ -6,8 +6,6 @@ use App\Filament\Resources\LeaveResource;
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
-use Filament\Notifications\Notification;
-use Filament\Notifications\Actions\Action;
 use App\Models\User;
 use App\Events\LeaveRequested;
 

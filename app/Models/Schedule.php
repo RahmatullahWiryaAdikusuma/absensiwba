@@ -30,6 +30,7 @@ class Schedule extends Model
         'user_id',
         'shift_id',
         'office_id',
+        'office_location_id',
         'is_wfa',
         'is_banned'
     ];
@@ -49,4 +50,10 @@ class Schedule extends Model
     {
         return $this->belongsTo(Office::class);
     }
+
+    public function officeLocation()  
+    {
+        return $this->belongsTo(OfficeLocation::class);
+    }
+
 }

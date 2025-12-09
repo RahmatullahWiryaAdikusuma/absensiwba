@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use Illuminate\Support\Facades\Auth;
 use App\Filament\Resources\OfficeResource\Pages;
 use App\Filament\Resources\OfficeResource\RelationManagers;
 use App\Models\Office;
@@ -13,6 +14,12 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Humaidem\FilamentMapPicker\Fields\OSMMap;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 
 class OfficeResource extends Resource
 {
@@ -27,62 +34,88 @@ class OfficeResource extends Resource
     public static function form(Form $form): Form
     {
         return $form
-            ->schema([
-                Forms\Components\Group::make()
+            ->schema([ 
+                Section::make('Informasi Kantor')
                     ->schema([
-                        Forms\Components\Section::make()
+                        TextInput::make('name')
+                            ->label('Nama Kantor / Lokasi')
+                            ->required()
+                            ->maxLength(255)
+                            ->placeholder('Contoh: WBA Pusat'),
+                            
+                        TextInput::make('address')
+                            ->label('Alamat')
+                            ->required()    
+                            ->columnSpanFull(),
+                    ]),
+ 
+                Section::make('Titik Lokasi Absensi')
+                    ->description('Anda bisa menambahkan banyak titik koordinat untuk kantor ini.')
+                    ->schema([
+                        Repeater::make('locations')  
+                            ->relationship()
                             ->schema([
-                                Forms\Components\TextInput::make('name')
+                                TextInput::make('name')
+                                    ->label('Titik Lokasi')
                                     ->required()
-                                    ->maxLength(255),
-                                OSMMap::make('location')
-                                    ->label('Location')
+                                    ->placeholder('Misal: Gerbang Depan')
+                                    ->columnSpanFull(),
+ 
+                                OSMMap::make('location_map') 
+                                    ->label('Pilih Lokasi di Peta')
                                     ->showMarker()
                                     ->draggable()
                                     ->extraControl([
                                         'zoomDelta'           => 1,
                                         'zoomSnap'            => 0.25,
                                         'wheelPxPerZoomLevel' => 60
-                                    ])
-                                    ->afterStateHydrated(function (Forms\Get $get, Forms\Set $set, $record) {
-                                        if ($record) {
-                                            $latitude = $record->latitude;
-                                            $longitude = $record->longitude;
-
-                                            if ($latitude && $longitude) {
-                                                    $set('location', ['lat' => $latitude, 'lng' => $longitude]);
-                                            }
+                                    ]) 
+                                    
+                                    ->dehydrated(false)
+                                    ->afterStateHydrated(function (Get $get, Set $set, ?array $state) {
+                                        
+                                        $lat = $get('latitude');
+                                        $lng = $get('longitude');
+                                        
+                                        if ($lat && $lng) {
+                                            $set('location_map', ['lat' => $lat, 'lng' => $lng]);
+                                        }
+                                    }) 
+                                    ->afterStateUpdated(function ($state, Set $set) {
+                                        if (is_array($state)) {
+                                            $set('latitude', $state['lat'] ?? null);
+                                            $set('longitude', $state['lng'] ?? null);
                                         }
                                     })
-                                    ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                                        $set('latitude', $state['lat']);
-                                        $set('longitude', $state['lng']);
-                                    })
-                                    ->tilesUrl('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'),
-                                Forms\Components\Group::make()
+                                    ->tilesUrl('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+                                    ->columnSpanFull(),
+
+                                Grid::make(3)
                                     ->schema([
-                                        Forms\Components\TextInput::make('latitude')
+                                        TextInput::make('latitude')
+                                            ->label('Latitude')
                                             ->required()
                                             ->numeric(),
-                                        Forms\Components\TextInput::make('longitude')
+                                            
+                                        TextInput::make('longitude')
+                                            ->label('Longitude')
                                             ->required()
                                             ->numeric(),
-                                    ])->columns(2)
 
-
+                                        TextInput::make('radius')
+                                            ->label('Radius (Meter)')
+                                            ->required()
+                                            ->numeric()
+                                            ->default(50)
+                                            ->minValue(10),
+                                    ]),
                             ])
-
-                ]),
-                Forms\Components\Group::make()
-                        ->schema([
-                            Forms\Components\Section::make()
-                                ->schema([
-                                    Forms\Components\TextInput::make('radius')
-                                        ->required()
-                                        ->numeric(),
-                                ])
-                        ])
-
+                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
+                            ->addActionLabel('Tambah Titik Lokasi')
+                            ->defaultItems(1)
+                            ->grid(1)
+                            ->collapsible(),
+                    ]),
             ]);
     }
 
@@ -91,32 +124,31 @@ class OfficeResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('latitude')
+                    ->label('Nama Kantor')
+                    ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('longitude')
+
+                Tables\Columns\TextColumn::make('locations_count')
+                    ->counts('locations')
+                    ->label('Jml. Titik Absen')
                     ->sortable(),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                    
                 Tables\Columns\TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('deleted_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('radius')
-                    ->numeric()
-                    ->sortable(),
             ])
             ->filters([
                 //
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

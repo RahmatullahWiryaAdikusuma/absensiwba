@@ -15,17 +15,14 @@ public function up()
         $table->id();
         $table->foreignId('user_id')->constrained()->onDelete('cascade');
 
-        
         $table->double('schedule_latitude');
         $table->double('schedule_longitude');
         $table->time('schedule_start_time');
-        $table->time('schedule_end_time');
- 
+        $table->time('schedule_end_time'); 
         $table->double('start_latitude');
         $table->double('start_longitude');
         $table->datetime('start_time');
 
-        
         $table->double('end_latitude')->nullable();   
         $table->double('end_longitude')->nullable();  
         $table->datetime('end_time')->nullable();        

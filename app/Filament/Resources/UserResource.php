@@ -25,10 +25,9 @@ class UserResource extends Resource
                     ->required()
                     ->maxLength(255),
                 
-                // === MAGIC DROPDOWN JABATAN ===
                 Forms\Components\Select::make('position_id')
                     ->label('Jabatan / Posisi')
-                    ->relationship('position', 'name') // Ambil dari tabel positions
+                    ->relationship('position', 'name') 
                     ->searchable()
                     ->preload()
                     ->createOptionForm([
@@ -42,7 +41,6 @@ class UserResource extends Resource
                             ->required(),
                     ])
                     ->required(),
-                // ==============================
 
                 Forms\Components\TextInput::make('email')
                     ->email()

@@ -10,8 +10,7 @@ use App\Models\Schedule;
 use App\Models\Leave;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Validator; 
-use Filament\Notifications\Notification;  
+use Illuminate\Support\Facades\Validator;  
 use App\Events\AttendanceRecorded;
 
 class AttendanceController extends Controller
@@ -102,7 +101,6 @@ class AttendanceController extends Controller
         $schedule = Schedule::with(['office', 'shift'])->where('user_id', $userId)->first();
         $today = Carbon::today()->format('Y-m-d');
 
-        // 1. Cek Cuti
         $approvedLeave = Leave::where('user_id', $userId)
                             ->where('status', 'approved')
                             ->whereDate('start_date', '<=', $today)
@@ -113,12 +111,11 @@ class AttendanceController extends Controller
             return response()->json(['success' => true, 'message' => 'Anda sedang cuti', 'data' => null]);
         }
 
-        // 2. Cek Jadwal & Proses Absen
         if ($schedule) {
             $attendance = Attendance::where('user_id', $userId)->whereDate('created_at', $today)->first();
 
             if (!$attendance) {
-                // === ABSEN MASUK ===
+               
                 $attendance = Attendance::create([
                     'user_id' => $userId,
                     'schedule_latitude' => $schedule->office->latitude,
@@ -131,13 +128,12 @@ class AttendanceController extends Controller
                     'end_time' => null,
                 ]);
 
-                // 🔥 TRIGGER EVENT: CHECK IN
                 event(new AttendanceRecorded($attendance, 'check_in'));
 
                 return response()->json(['success' => true, 'message' => 'Absen masuk berhasil', 'data' => $attendance]);
 
             } else { 
-                // === ABSEN PULANG ===
+              
                 if ($attendance->end_time !== null) {
                     return response()->json(['success' => false, 'message' => 'Sudah absen pulang'], 400);
                 }
@@ -148,7 +144,6 @@ class AttendanceController extends Controller
                     'end_time' => now(),
                 ]);
 
-                // 🔥 TRIGGER EVENT: CHECK OUT
                 event(new AttendanceRecorded($attendance, 'check_out'));
 
                 return response()->json(['success' => true, 'message' => 'Absen pulang berhasil', 'data' => $attendance]);

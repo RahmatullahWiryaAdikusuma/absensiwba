@@ -24,47 +24,40 @@ class AttendanceResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form->schema([]); // Form kosong karena absen via HP
+        return $form->schema([]); 
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) {
-                // User biasa cuma bisa lihat datanya sendiri
                 if (!Auth::user()->hasRole('super_admin')) {
                     $query->where('user_id', Auth::user()->id);
                 }
             })
-            ->columns([
-                // === 1. KOLOM PEGAWAI (Sekarang di Pojok Kiri) ===
+            ->columns([ 
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Pegawai')
                     ->searchable()
                     ->sortable()
                     ->formatStateUsing(function ($state, $record) {
-                        // Ambil nama jabatan dari relasi
-                        // $state = Nama User (contoh: Adikusuma)
                         $jabatan = $record->user->position->name ?? '-';
                         return "{$state} ({$jabatan})";
                     }),
 
-                // === 2. KOLOM TANGGAL ===
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Tanggal')
-                    ->date() // Menampilkan Tanggal Saja
+                    ->date()  
                     ->sortable(),
 
-                // === 3. JAM MASUK & PULANG ===
                 Tables\Columns\TextColumn::make('start_time')
                     ->label('Waktu Datang')
-                    ->time(), // Menampilkan Jam Saja
+                    ->time(),  
 
                 Tables\Columns\TextColumn::make('end_time')
                     ->label('Waktu Pulang')
                     ->time(),
 
-                // === 4. STATUS TERLAMBAT ===
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()

@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\UserResource\Pages;
 
 use App\Filament\Resources\UserResource;
-use Filament\Actions; // <--- INI YANG BENAR BUAT HALAMAN
+use Filament\Actions; 
 use Filament\Resources\Pages\ListRecords;
 use Filament\Notifications\Notification;
 use App\Models\User;
@@ -16,8 +16,6 @@ class ListUsers extends ListRecords
     {
         return [
             Actions\CreateAction::make(),
-
-            // Perhatikan pakai 'Actions\Action', BUKAN 'Tables\Actions'
             Actions\Action::make('resetCuti') 
                 ->label('Reset Cuti (12)')
                 ->color('danger')

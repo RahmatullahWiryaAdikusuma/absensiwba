@@ -23,9 +23,7 @@ return new class extends Migration
             $table->string('password');
             $table->rememberToken();
             $table->timestamps();
-            
-            // Tambahan opsional: kolom image jika belum ada di kode aslimu
-            // $table->string('image')->nullable(); 
+            $table->string('image')->nullable(); 
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

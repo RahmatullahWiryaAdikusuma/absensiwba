@@ -77,6 +77,13 @@ class User extends Authenticatable
         return $this->image ? url('storage/'. $this->image) : null;
     }
 
-
+    public function deductLeaveBalance(int $days): bool
+    {
+        if ($this->leave_balance < $days) {
+            return false;  
+        }
+        $this->decrement('leave_balance', $days);
+        return true;  
+    }
 
 }
