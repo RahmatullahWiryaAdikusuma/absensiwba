@@ -22,7 +22,9 @@ class Attendance extends Model
         'end_latitude',
         'end_longitude',
         'start_time',
-        'end_time'
+        'end_time',
+        'start_image',
+        'end_image',
     ];
 
     public function user(): BelongsTo

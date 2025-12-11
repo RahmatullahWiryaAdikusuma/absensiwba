@@ -11,8 +11,10 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     use HasApiTokens, HasFactory, Notifiable, HasRoles, logsActivity;
 
@@ -28,6 +30,7 @@ class User extends Authenticatable
         'image',
         'position_id',
         'leave_balance',
+        'is_active',
     ];
 
     /**
@@ -84,6 +87,11 @@ class User extends Authenticatable
         }
         $this->decrement('leave_balance', $days);
         return true;  
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    { 
+        return $this->is_active;
     }
 
 }

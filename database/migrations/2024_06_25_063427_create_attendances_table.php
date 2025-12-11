@@ -9,23 +9,24 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-public function up()
+public function up(): void
 {
     Schema::create('attendances', function (Blueprint $table) {
         $table->id();
-        $table->foreignId('user_id')->constrained()->onDelete('cascade');
-
+        $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+        
         $table->double('schedule_latitude');
         $table->double('schedule_longitude');
         $table->time('schedule_start_time');
-        $table->time('schedule_end_time'); 
+        $table->time('schedule_end_time');  
         $table->double('start_latitude');
         $table->double('start_longitude');
         $table->datetime('start_time');
-
+        $table->string('start_image')->nullable();  
         $table->double('end_latitude')->nullable();   
         $table->double('end_longitude')->nullable();  
         $table->datetime('end_time')->nullable();        
+        $table->string('end_image')->nullable(); 
 
         $table->timestamps();
         $table->softDeletes();

@@ -9,6 +9,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Columns\ToggleColumn;
 
 class UserResource extends Resource
 {
@@ -74,6 +75,11 @@ class UserResource extends Resource
                     ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('email')->searchable(),
+                ToggleColumn::make('is_active')
+                ->label('Status Aktif')
+                ->onColor('success')
+                ->offColor('danger')
+                ->sortable(),
                 Tables\Columns\TextColumn::make('leave_balance')->label('Sisa Cuti')->sortable(),
                 Tables\Columns\TextColumn::make('roles.name')->badge(),
                 Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),

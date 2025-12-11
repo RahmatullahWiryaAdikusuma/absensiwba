@@ -5,11 +5,13 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\LeaveResource\Pages;
 use App\Models\Leave;
 use Filament\Forms;
+use Filament\Forms\Get;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model; // Import Model
 use Illuminate\Support\Facades\Auth;
 
 class LeaveResource extends Resource
@@ -24,9 +26,70 @@ class LeaveResource extends Resource
         $schema = [
             Forms\Components\Section::make('Detail Pengajuan')
                 ->schema([
-                    Forms\Components\DatePicker::make('start_date')->required(),
-                    Forms\Components\DatePicker::make('end_date')->required(),
-                    Forms\Components\Textarea::make('reason')->required()->columnSpanFull(),
+                    Forms\Components\DatePicker::make('start_date')
+                        ->label('Tanggal Mulai')
+                        ->required()
+                        ->native(false)
+                        ->live()
+                        ->rules([
+                            fn (Get $get, ?Model $record) => function (string $attribute, $value, $fail) use ($get, $record) {
+                                $user = Auth::user();
+                                $endDate = $get('end_date') ?? $value;
+
+                                // Logika Cek Bentrok yang Lebih Simpel & Akurat
+                                $query = Leave::where('user_id', $user->id)
+                                    ->where('status', '!=', 'rejected') // Abaikan yang ditolak
+                                    ->where(function ($q) use ($value, $endDate) {
+                                        $q->where('start_date', '<=', $endDate)
+                                          ->where('end_date', '>=', $value);
+                                    });
+
+                                // PENTING: Kecualikan record ini sendiri jika sedang mode Edit
+                                if ($record) {
+                                    $query->where('id', '!=', $record->id);
+                                }
+
+                                if ($query->exists()) {
+                                    $fail('Tanggal cuti bertabrakan dengan pengajuan Anda yang lain.');
+                                }
+                            },
+                        ]),
+
+                    Forms\Components\DatePicker::make('end_date')
+                        ->label('Tanggal Selesai')
+                        ->required()
+                        ->native(false)
+                        ->afterOrEqual('start_date')
+                        ->live()
+                        ->rules([
+                            fn (Get $get, ?Model $record) => function (string $attribute, $value, $fail) use ($get, $record) {
+                                $user = Auth::user();
+                                $startDate = $get('start_date');
+                                
+                                if (!$startDate) return;
+
+                                $query = Leave::where('user_id', $user->id)
+                                    ->where('status', '!=', 'rejected')
+                                    ->where(function ($q) use ($startDate, $value) {
+                                        $q->where('start_date', '<=', $value)
+                                          ->where('end_date', '>=', $startDate);
+                                    });
+
+                                // PENTING: Kecualikan record ini sendiri jika sedang mode Edit
+                                if ($record) {
+                                    $query->where('id', '!=', $record->id);
+                                }
+
+                                if ($query->exists()) {
+                                    $fail('Tanggal cuti bertabrakan dengan pengajuan Anda yang lain.');
+                                }
+                            },
+                        ]),
+
+                    Forms\Components\Textarea::make('reason')
+                        ->label('Alasan')
+                        ->required()
+                        ->columnSpanFull(),
                 ])
         ];
 

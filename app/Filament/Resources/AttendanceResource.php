@@ -9,6 +9,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Columns\ImageColumn; 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
@@ -24,7 +25,25 @@ class AttendanceResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form->schema([]); 
+        return $form->schema([
+            Forms\Components\Select::make('user_id')
+                ->relationship('user', 'name')
+                ->disabled(),
+            
+            Forms\Components\FileUpload::make('start_image')
+                ->label('Foto Masuk')
+                ->disk('public')
+                ->directory('attendance-photos')
+                ->image()
+                ->openable(),
+
+            Forms\Components\FileUpload::make('end_image')
+                ->label('Foto Pulang')
+                ->disk('public')
+                ->directory('attendance-photos')
+                ->image()
+                ->openable(),
+        ]); 
     }
 
     public static function table(Table $table): Table
@@ -40,23 +59,44 @@ class AttendanceResource extends Resource
                     ->label('Pegawai')
                     ->searchable()
                     ->sortable()
-                    ->formatStateUsing(function ($state, $record) {
-                        $jabatan = $record->user->position->name ?? '-';
-                        return "{$state} ({$jabatan})";
-                    }),
+                    ->description(fn (Attendance $record) => $record->user->position->name ?? '-'),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Tanggal')
-                    ->date()  
+                    ->date('d M Y')  
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('start_time')
-                    ->label('Waktu Datang')
-                    ->time(),  
+                // --- FOTO & WAKTU DATANG ---
+                Tables\Columns\ColumnGroup::make('Kehadiran Masuk', [
+                    ImageColumn::make('start_image')
+                        ->label('Selfie Masuk')
+                        ->disk('public')
+                        ->circular()
+                        ->defaultImageUrl(url('/images/placeholder.png'))
+                        ->visibility('public'), 
+                    
+                    Tables\Columns\TextColumn::make('start_time')
+                        ->label('Jam')
+                        ->time('H:i')
+                        ->size(Tables\Columns\TextColumn\TextColumnSize::Medium)
+                        ->weight('bold'), // Perbaikan: Gunakan string 'bold'
+                ])->alignCenter(),
 
-                Tables\Columns\TextColumn::make('end_time')
-                    ->label('Waktu Pulang')
-                    ->time(),
+                // --- FOTO & WAKTU PULANG ---
+                Tables\Columns\ColumnGroup::make('Kehadiran Pulang', [
+                    ImageColumn::make('end_image')
+                        ->label('Selfie Pulang')
+                        ->disk('public')
+                        ->circular()
+                        ->defaultImageUrl(url('/images/placeholder.png')),
+
+                    Tables\Columns\TextColumn::make('end_time')
+                        ->label('Jam')
+                        ->time('H:i')
+                        ->placeholder('-') // Perbaikan: Gunakan placeholder agar tidak error Carbon
+                        ->size(Tables\Columns\TextColumn\TextColumnSize::Medium)
+                        ->weight('bold'), // Perbaikan: Gunakan string 'bold'
+                ])->alignCenter(),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
@@ -68,10 +108,11 @@ class AttendanceResource extends Resource
                         'Tepat Waktu' => 'success',
                         'Terlambat' => 'danger',
                     })
-                    ->description(fn (Attendance $record): string => 'Durasi: '.$record->workDuration()),
+                    ->description(fn (Attendance $record): string => $record->end_time ? 'Durasi: '.$record->workDuration() : 'Sedang Bekerja'),
             ])
             ->defaultSort('created_at', 'desc')
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([

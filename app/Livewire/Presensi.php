@@ -3,17 +3,22 @@
 namespace App\Livewire;
 
 use Livewire\Component;
+use Livewire\WithFileUploads; 
 use App\Models\Schedule;
 use App\Models\Leave;
 use App\Models\Attendance;
+use App\Events\AttendanceRecorded; 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 
 class Presensi extends Component
 {
+    use WithFileUploads; // Gunakan trait ini
+
     public $latitude;
     public $longitude;
     public $insideRadius = false;
+    public $photo; // Variabel foto
 
     public function updatedLatitude() {
         $this->checkRadius();
@@ -39,7 +44,6 @@ class Presensi extends Component
     {
         $schedule = Schedule::where('user_id', Auth::user()->id)->first();
 
-        // PENTING: Menggunakan officeLocation untuk koordinat
         if ($schedule && $schedule->officeLocation) {
             $officeLat = $schedule->officeLocation->latitude;
             $officeLng = $schedule->officeLocation->longitude;
@@ -64,7 +68,8 @@ class Presensi extends Component
     {
         $this->validate([
             'latitude' => 'required',
-            'longitude' => 'required'
+            'longitude' => 'required',
+            'photo' => 'required|image|max:10240', // Validasi foto
         ]);
 
         $schedule = Schedule::where('user_id', Auth::user()->id)->first();
@@ -94,9 +99,12 @@ class Presensi extends Component
                             ->first();
             $now = Carbon::now();
 
+            // Simpan Foto
+            $photoPath = $this->photo->store('attendance-photos', 'public');
+
             if (!$attendance) {
-                // Absen Masuk
-                Attendance::create([
+                // --- ABSEN MASUK ---
+                $newAttendance = Attendance::create([
                     'user_id' => Auth::user()->id,
                     'schedule_latitude' => $schedule->officeLocation->latitude,
                     'schedule_longitude' => $schedule->officeLocation->longitude,
@@ -105,14 +113,22 @@ class Presensi extends Component
                     'start_latitude' => $this->latitude,
                     'start_longitude' => $this->longitude,
                     'start_time' => $now->toDateTimeString(),
+                    'start_image' => $photoPath,
                 ]);
+
+                event(new AttendanceRecorded($newAttendance, 'check_in'));
+
             } elseif (!$attendance->end_time) {
-                // Absen Pulang
+                // --- ABSEN PULANG ---
                 $attendance->update([
                     'end_latitude' => $this->latitude,
                     'end_longitude' => $this->longitude,
                     'end_time' => $now->toDateTimeString(),
+                    'end_image' => $photoPath,
                 ]);
+
+                // PEMICU NOTIFIKASI PULANG (PENTING!)
+                event(new AttendanceRecorded($attendance, 'check_out'));
             }
 
             return redirect()->route('presensi');
