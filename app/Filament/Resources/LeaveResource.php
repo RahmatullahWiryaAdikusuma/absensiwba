@@ -4,107 +4,73 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\LeaveResource\Pages;
 use App\Models\Leave;
+use App\Models\Office; // Import
 use Filament\Forms;
-use Filament\Forms\Get;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Filters\SelectFilter; // Import
+use Filament\Tables\Actions\Action; 
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model; // Import Model
 use Illuminate\Support\Facades\Auth;
 
 class LeaveResource extends Resource
 {
     protected static ?string $model = Leave::class;
-    protected static ?string $navigationIcon = 'heroicon-c-x-circle';
-    protected static ?int $navigationSort = 9;
+    
+    protected static ?string $navigationLabel = 'Izin (Sakit/Lainnya)';
+    protected static ?string $modelLabel = 'Izin';
+    protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationGroup = 'Attendance Management';
+    protected static ?int $navigationSort = 10;
 
     public static function form(Form $form): Form
     {
         $schema = [
-            Forms\Components\Section::make('Detail Pengajuan')
+            Forms\Components\Section::make('Form Pengajuan Izin')
+                ->description('Gunakan form ini untuk izin sakit atau keperluan mendesak (Tidak memotong kuota cuti).')
                 ->schema([
                     Forms\Components\DatePicker::make('start_date')
-                        ->label('Tanggal Mulai')
+                        ->label('Mulai Tanggal')
                         ->required()
-                        ->native(false)
-                        ->live()
-                        ->rules([
-                            fn (Get $get, ?Model $record) => function (string $attribute, $value, $fail) use ($get, $record) {
-                                $user = Auth::user();
-                                $endDate = $get('end_date') ?? $value;
-
-                                // Logika Cek Bentrok yang Lebih Simpel & Akurat
-                                $query = Leave::where('user_id', $user->id)
-                                    ->where('status', '!=', 'rejected') // Abaikan yang ditolak
-                                    ->where(function ($q) use ($value, $endDate) {
-                                        $q->where('start_date', '<=', $endDate)
-                                          ->where('end_date', '>=', $value);
-                                    });
-
-                                // PENTING: Kecualikan record ini sendiri jika sedang mode Edit
-                                if ($record) {
-                                    $query->where('id', '!=', $record->id);
-                                }
-
-                                if ($query->exists()) {
-                                    $fail('Tanggal cuti bertabrakan dengan pengajuan Anda yang lain.');
-                                }
-                            },
-                        ]),
+                        ->native(false),
 
                     Forms\Components\DatePicker::make('end_date')
-                        ->label('Tanggal Selesai')
+                        ->label('Sampai Tanggal')
                         ->required()
                         ->native(false)
-                        ->afterOrEqual('start_date')
-                        ->live()
-                        ->rules([
-                            fn (Get $get, ?Model $record) => function (string $attribute, $value, $fail) use ($get, $record) {
-                                $user = Auth::user();
-                                $startDate = $get('start_date');
-                                
-                                if (!$startDate) return;
-
-                                $query = Leave::where('user_id', $user->id)
-                                    ->where('status', '!=', 'rejected')
-                                    ->where(function ($q) use ($startDate, $value) {
-                                        $q->where('start_date', '<=', $value)
-                                          ->where('end_date', '>=', $startDate);
-                                    });
-
-                                // PENTING: Kecualikan record ini sendiri jika sedang mode Edit
-                                if ($record) {
-                                    $query->where('id', '!=', $record->id);
-                                }
-
-                                if ($query->exists()) {
-                                    $fail('Tanggal cuti bertabrakan dengan pengajuan Anda yang lain.');
-                                }
-                            },
-                        ]),
+                        ->afterOrEqual('start_date'),
 
                     Forms\Components\Textarea::make('reason')
-                        ->label('Alasan')
+                        ->label('Alasan Izin')
                         ->required()
+                        ->columnSpanFull(),
+
+                    Forms\Components\FileUpload::make('surat_izin')
+                        ->label('Bukti / Surat Dokter')
+                        ->disk('public')
+                        ->directory('surat-izin')
+                        ->visibility('public')
+                        ->image() 
                         ->columnSpanFull(),
                 ])
         ];
 
-        // HANYA SUPER ADMIN YANG BISA LIHAT FORM APPROVAL
         if (Auth::user()->hasRole('super_admin')) {
-            $schema[] =
-            Forms\Components\Section::make('Approval (Admin Only)')
+            $schema[] = Forms\Components\Section::make('Approval (Admin Only)')
                 ->schema([
                     Forms\Components\Select::make('status')
                         ->options([
-                            'approved' => 'Approved',
-                            'rejected' => 'Rejected',
                             'pending' => 'Pending',
-                        ])->required(),
-                    Forms\Components\Textarea::make('note')->columnSpanFull(),
+                            'approved' => 'Disetujui',
+                            'rejected' => 'Ditolak',
+                        ])
+                        ->default('pending')
+                        ->required(),
+                    Forms\Components\Textarea::make('note')
+                        ->label('Catatan Admin')
+                        ->placeholder('Alasan penolakan atau catatan tambahan'),
                 ]);
         }
 
@@ -115,35 +81,74 @@ class LeaveResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) {
-                // Karyawan cuma bisa lihat punya sendiri
                 if (!Auth::user()->hasRole('super_admin')) {
                     $query->where('user_id', Auth::user()->id);
                 }
             })
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')
-                    ->label('Pegawai')
+                    ->label('Nama Pegawai')
                     ->searchable()
-                    ->description(fn (Leave $record) => $record->user->position->name ?? '-')
-                    ->formatStateUsing(fn ($state, $record) => "{$state} (" . ($record->user->position->name ?? 'Staff') . ")"),
+                    ->sortable(),
                 
-                Tables\Columns\TextColumn::make('user.leave_balance')
-                    ->label('Sisa Cuti')
-                    ->badge()
-                    ->color(fn ($state) => $state > 5 ? 'success' : ($state > 2 ? 'warning' : 'danger')),
+                Tables\Columns\TextColumn::make('reason')
+                    ->label('Alasan')
+                    ->limit(30)
+                    ->searchable(),
 
-                Tables\Columns\TextColumn::make('start_date')->date()->sortable(),
-                Tables\Columns\TextColumn::make('end_date')->date()->sortable(),
+                Tables\Columns\TextColumn::make('start_date')
+                    ->date('d M Y')
+                    ->label('Mulai'),
+
+                Tables\Columns\TextColumn::make('end_date')
+                    ->date('d M Y')
+                    ->label('Selesai'),
+                
+                Tables\Columns\ImageColumn::make('surat_izin')
+                    ->label('Bukti')
+                    ->disk('public')
+                    ->square()
+                    ->url(fn ($record) => asset('storage/' . $record->surat_izin))
+                    ->openUrlInNewTab(),
+
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
-                    ->color(fn ($state) => match($state) { 'approved' => 'success', 'rejected' => 'danger', default => 'gray' }),
+                    ->color(fn (string $state): string => match ($state) {
+                        'approved' => 'success',
+                        'rejected' => 'danger',
+                        'pending' => 'warning',
+                        default => 'gray',
+                    }),
+            ])
+            ->filters([
+                // 1. Filter Status Ajuan
+                SelectFilter::make('status')
+                    ->label('Status Ajuan')
+                    ->options([
+                        'pending' => 'Pending',
+                        'approved' => 'Disetujui',
+                        'rejected' => 'Ditolak',
+                    ]),
+                
+                // 2. Filter Lokasi Kantor
+                SelectFilter::make('office_id')
+                    ->label('Lokasi Kantor')
+                    ->options(Office::pluck('name', 'id'))
+                    ->query(function (Builder $query, array $data) {
+                        if (empty($data['value'])) return $query;
+                        return $query->whereHas('user.schedule', function (Builder $q) use ($data) {
+                            $q->where('office_id', $data['value']);
+                        });
+                    })
+                    ->searchable(),
             ])
             ->defaultSort('created_at', 'desc')
-            ->actions([ Tables\Actions\EditAction::make(), ])
-            ->bulkActions([ Tables\Actions\DeleteBulkAction::make(), ]);
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+            ]);
     }
 
-    public static function getRelations(): array { return []; }
     public static function getPages(): array
     {
         return [

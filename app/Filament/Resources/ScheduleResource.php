@@ -11,6 +11,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Filters\SelectFilter; // Import
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
@@ -26,14 +27,14 @@ class ScheduleResource extends Resource
 
     protected static ?string $navigationGroup = 'Attendance Management';
 
-        public static function form(Form $form): Form
+    public static function form(Form $form): Form
     {
-                            return $form
-                                ->schema([
-                            Forms\Components\Group::make()
-                                ->schema([
-                            Forms\Components\Section::make()
-                                ->schema([
+        return $form
+            ->schema([
+                Forms\Components\Group::make()
+                    ->schema([
+                    Forms\Components\Section::make()
+                        ->schema([
                             Forms\Components\Toggle::make('is_banned'),
                             
                             Forms\Components\Select::make('user_id')
@@ -105,6 +106,7 @@ class ScheduleResource extends Resource
                     ->description(fn (Schedule $record): string => $record->shift->start_time.' - '.$record->shift->end_time)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('office.name')
+                    ->label('Titik Lokasi') // Sesuai label di tabel
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
@@ -116,7 +118,12 @@ class ScheduleResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                // FILTER BY TITIK LOKASI (OFFICE)
+                SelectFilter::make('office_id')
+                    ->label('Filter Titik Lokasi')
+                    ->relationship('office', 'name')
+                    ->searchable()
+                    ->preload(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

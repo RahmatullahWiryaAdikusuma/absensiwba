@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Leave extends Model
+class LeaveCuti extends Model
 {
     use HasFactory, SoftDeletes;
  
-    
+    protected $table = 'leave_cutis';
+
     protected $fillable = [
         'user_id',
         'start_date',
@@ -19,7 +20,8 @@ class Leave extends Model
         'reason',
         'status',
         'note',
-        'surat_izin',  
+        'surat_cuti',  
+        'sisa_cuti',   
     ];
 
     protected $casts = [

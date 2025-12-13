@@ -8,15 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('leaves', function (Blueprint $table) {
+        Schema::create('leave_cutis', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            
             $table->date('start_date');
             $table->date('end_date');
-            $table->text('reason');  
-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');    
+            $table->text('reason');
+            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->text('note')->nullable();  
-            $table->string('surat_izin');  
+            $table->string('surat_cuti');  
+            $table->integer('sisa_cuti')->default(0); 
+            
             $table->timestamps();
             $table->softDeletes();
         });
@@ -24,6 +27,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('leaves');
+        Schema::dropIfExists('leave_cutis');
     }
 };

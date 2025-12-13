@@ -2,41 +2,47 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\User;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
-    public function run()
+    /**
+     * Seed the application's database.
+     */
+    public function run(): void
     {
-       
-        $roleSuperAdmin = Role::firstOrCreate(['name' => 'super_admin']);
-        $roleKaryawan = Role::firstOrCreate(['name' => 'karyawan']); 
+        $this->call([
+            ShieldSeeder::class,
+            PositionSeeder::class,
+            ShiftSeeder::class,
+            OfficeSeeder::class,
+            OfficeLocationSeeder::class,
+        ]);
 
-        $superAdmin = User::firstOrCreate(
-            ['email' => 'superadmin@kantor.com'],
+        $user = User::firstOrCreate(
+            ['email' => 'superadmin@kantor.com'], // Cek email biar ga duplikat
             [
                 'name' => 'Super Admin',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('password'),
+                'is_active' => true, 
             ]
         );
-        $superAdmin->assignRole($roleSuperAdmin);
 
-        $permissions = Permission::all();
-        if ($permissions->count() > 0) {
-            $roleSuperAdmin->syncPermissions($permissions);
-        }
+        $user->assignRole('super_admin');
+        
+        $karyawan = User::create([
+            'name' => 'Karyawan 1',
+            'email' => 'karyawan@kantor.com',
+            'password' => Hash::make('password'),
+            'is_active' => true,
+        ]);
+        $karyawan->assignRole('karyawan');
 
-        $satpam = User::firstOrCreate(
-            ['email' => 'satpam@kantor.com'],
-            [
-                'name' => 'Asep Satpam',
-                'password' => Hash::make('password123'),
-            ]
-        );
-        $satpam->syncRoles([$roleKaryawan]);
+        $this->call([
+            ScheduleSeeder::class,
+            AttendanceSeeder::class,
+        ]);
     }
 }

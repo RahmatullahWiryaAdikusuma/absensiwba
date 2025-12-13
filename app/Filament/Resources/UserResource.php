@@ -4,12 +4,16 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
+use App\Models\Office; // Import
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Filters\TernaryFilter; // Import Ternary
+use Filament\Tables\Filters\SelectFilter; // Import Select
+use Illuminate\Database\Eloquent\Builder;
 
 class UserResource extends Resource
 {
@@ -47,11 +51,9 @@ class UserResource extends Resource
                     ->email()
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('leave_balance')
-                    ->label('Jatah Cuti')
-                    ->numeric()
-                    ->default(12)
-                    ->required(),
+                Forms\Components\Placeholder::make('sisa_cuti_info')
+                    ->label('Sisa Cuti Tahunan')
+                    ->content(fn ($record) => $record ? $record->sisa_cuti . ' Hari' : '-'),
                 Forms\Components\TextInput::make('password')
                     ->password()
                     ->dehydrated(fn ($state) => filled($state))
@@ -67,7 +69,6 @@ class UserResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-        
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable(),
                 Tables\Columns\TextColumn::make('position.name') 
@@ -80,9 +81,33 @@ class UserResource extends Resource
                 ->onColor('success')
                 ->offColor('danger')
                 ->sortable(),
-                Tables\Columns\TextColumn::make('leave_balance')->label('Sisa Cuti')->sortable(),
+                Tables\Columns\TextColumn::make('sisa_cuti')
+                ->label('Sisa Cuti')
+                ->badge()
+                ->color(fn ($state) => $state > 5 ? 'success' : 'warning'),  
                 Tables\Columns\TextColumn::make('roles.name')->badge(),
                 Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                // 1. FILTER STATUS AKUN
+                TernaryFilter::make('is_active')
+                    ->label('Status Akun')
+                    ->placeholder('Semua')
+                    ->trueLabel('Aktif')
+                    ->falseLabel('Non Aktif'),
+
+                // 2. FILTER LOKASI KANTOR (Via Schedule)
+                SelectFilter::make('office_id')
+                    ->label('Lokasi Kantor')
+                    ->options(Office::pluck('name', 'id'))
+                    ->query(function (Builder $query, array $data) {
+                        if (empty($data['value'])) return $query;
+                        // Cari user yang punya jadwal di kantor tersebut
+                        return $query->whereHas('schedule', function (Builder $q) use ($data) {
+                            $q->where('office_id', $data['value']);
+                        });
+                    })
+                    ->searchable(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

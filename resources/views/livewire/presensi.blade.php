@@ -26,7 +26,9 @@
                     </div>
                 </div>
             </div>
-        @endif <div class="bg-white shadow-xl rounded-2xl overflow-hidden">
+        @endif
+
+        <div class="bg-white shadow-xl rounded-2xl overflow-hidden">
             
             <div class="px-6 py-5 bg-slate-50 border-b border-gray-200">
                 <div class="flex items-center justify-between mb-4">
@@ -40,18 +42,33 @@
                         <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium {{ $schedule->is_wfa ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800' }}">
                             {{ $schedule->is_wfa ? 'WFA' : 'WFO' }}
                         </span>
-                    @endif </div>
+                    @endif
+                </div>
                 
                 @if($schedule)
-                    <div class="text-sm text-gray-600 space-y-1">
-                        <p><strong>Shift:</strong> {{ $schedule->shift->name }} ({{ \Carbon\Carbon::parse($schedule->shift->start_time)->format('H:i') }} - {{ \Carbon\Carbon::parse($schedule->shift->end_time)->format('H:i') }})</p>
+                    <div class="text-sm text-gray-600 space-y-3">
                         <p><strong>Lokasi:</strong> {{ $schedule->officeLocation->name ?? '-' }}</p>
+                        
+                        <div>
+                            <label for="shift_id" class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
+                                Shift Saat Ini
+                            </label>
+                            <select wire:model="shift_id" id="shift_id" class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" {{ $attendance && !$attendance->end_time ? 'disabled' : '' }}>
+                                @foreach($shifts as $shift)
+                                    <option value="{{ $shift->id }}">
+                                        {{ $shift->name }} ({{ \Carbon\Carbon::parse($shift->start_time)->format('H:i') }} - {{ \Carbon\Carbon::parse($shift->end_time)->format('H:i') }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">*Ubah shift jika Anda sedang tukar jadwal.</p>
+                        </div>
                     </div>
                 @else
                     <div class="text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
                         Jadwal belum tersedia. Hubungi Admin.
                     </div>
-                @endif </div>
+                @endif
+            </div>
 
             <div class="grid grid-cols-2 border-b border-gray-200 divide-x divide-gray-200 bg-white">
                 <div class="p-4 text-center">
@@ -84,7 +101,8 @@
                                     <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"/></svg>
                                     Luar Radius
                                 </span>
-                            @endif </div>
+                            @endif
+                        </div>
                     </div>
 
                     @if($insideRadius)
@@ -112,12 +130,15 @@
                             Cek Lokasi Saya Lagi
                         </button>
                         <p class="text-center text-xs text-gray-500 mt-2">Anda harus berada di dalam area kantor untuk mengaktifkan kamera.</p>
-                    @endif @else
+                    @endif
+
+                @else
                     <div class="text-center p-6 bg-gray-50 rounded-xl border border-dashed border-gray-300">
                         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                         <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada jadwal</h3>
                     </div>
-                @endif </div>
+                @endif
+            </div>
         </div>
         
         <p class="text-center text-xs text-gray-400">
@@ -210,7 +231,7 @@
                         })
                         .catch(err => {
                             console.error("Gagal akses kamera:", err);
-                            alert("Tidak bisa mengakses kamera. Izinkan akses kamera di browser.");
+                            // alert("Tidak bisa mengakses kamera. Izinkan akses kamera di browser.");
                         });
                 }
             }, 500); 

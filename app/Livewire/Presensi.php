@@ -3,22 +3,43 @@
 namespace App\Livewire;
 
 use Livewire\Component;
-use Livewire\WithFileUploads; 
+use Livewire\WithFileUploads;
 use App\Models\Schedule;
 use App\Models\Leave;
 use App\Models\Attendance;
-use App\Events\AttendanceRecorded; 
+use App\Models\Shift; // <--- Import Model Shift
+use App\Events\AttendanceRecorded;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 
 class Presensi extends Component
 {
-    use WithFileUploads; // Gunakan trait ini
+    use WithFileUploads;
 
     public $latitude;
     public $longitude;
     public $insideRadius = false;
-    public $photo; // Variabel foto
+    public $photo;
+    
+    // TAMBAHAN: Variable untuk pilihan Shift
+    public $shift_id;
+    public $shifts; 
+
+    public function mount()
+    {
+        $user = Auth::user();
+        $schedule = Schedule::where('user_id', $user->id)->first();
+
+        // Ambil semua data shift untuk dropdown
+        $this->shifts = Shift::all();
+
+        // Set default shift sesuai jadwal user (jika ada)
+        if ($schedule) {
+            $this->shift_id = $schedule->shift_id;
+        } elseif ($this->shifts->isNotEmpty()) {
+            $this->shift_id = $this->shifts->first()->id;
+        }
+    }
 
     public function updatedLatitude() {
         $this->checkRadius();
@@ -29,10 +50,25 @@ class Presensi extends Component
 
     public function render()
     {
-        $schedule = Schedule::where('user_id', Auth::user()->id)->first();
-        $attendance = Attendance::where('user_id', Auth::user()->id)
-                            ->whereDate('created_at', Carbon::today())
+        $user = Auth::user();
+        $schedule = Schedule::where('user_id', $user->id)->first();
+
+        // Cari data absen terakhir yang BELUM dipulangin (Masih Open)
+        $attendance = Attendance::where('user_id', $user->id)
+                            ->whereNull('end_time')
+                            ->latest()
                             ->first();
+
+        // Jika tidak ada yang gantung, cari history hari ini untuk tampilan
+        if (!$attendance) {
+            $attendance = Attendance::where('user_id', $user->id)
+                                ->latest()
+                                ->first();
+            
+            if ($attendance && $attendance->end_time && !$attendance->created_at->isToday()) {
+                $attendance = null;
+            }
+        }
 
         return view('livewire.presensi', [
             'schedule' => $schedule,
@@ -69,10 +105,12 @@ class Presensi extends Component
         $this->validate([
             'latitude' => 'required',
             'longitude' => 'required',
-            'photo' => 'required|image|max:10240', // Validasi foto
+            'photo' => 'required|image|max:10240',
+            'shift_id' => 'required|exists:shifts,id', // Validasi Shift harus dipilih
         ]);
 
-        $schedule = Schedule::where('user_id', Auth::user()->id)->first();
+        $user = Auth::user();
+        $schedule = Schedule::where('user_id', $user->id)->first();
         $this->checkRadius();
 
         if (!$this->insideRadius) {
@@ -82,7 +120,7 @@ class Presensi extends Component
 
         // Cek Cuti
         $today = Carbon::today()->format('Y-m-d');
-        $isOnLeave = Leave::where('user_id', Auth::user()->id)
+        $isOnLeave = Leave::where('user_id', $user->id)
             ->where('status', 'approved')
             ->whereDate('start_date', '<=', $today)
             ->whereDate('end_date', '>=', $today)
@@ -94,22 +132,42 @@ class Presensi extends Component
         }
 
         if ($schedule) {
-            $attendance = Attendance::where('user_id', Auth::user()->id)
-                            ->whereDate('created_at', Carbon::today())
+            // Cek absen gantung
+            $activeAttendance = Attendance::where('user_id', $user->id)
+                            ->whereNull('end_time')
+                            ->latest()
                             ->first();
+            
             $now = Carbon::now();
-
-            // Simpan Foto
             $photoPath = $this->photo->store('attendance-photos', 'public');
 
-            if (!$attendance) {
-                // --- ABSEN MASUK ---
+            // Ambil Data Shift yang DIPILIH (Bukan default schedule)
+            // Ini kunci agar Satpam A bisa pakai jam Shift 2
+            $selectedShift = Shift::find($this->shift_id);
+
+            if ($activeAttendance) {
+                // === ABSEN PULANG ===
+                $activeAttendance->update([
+                    'end_latitude' => $this->latitude,
+                    'end_longitude' => $this->longitude,
+                    'end_time' => $now->toDateTimeString(),
+                    'end_image' => $photoPath,
+                ]);
+
+                event(new AttendanceRecorded($activeAttendance, 'check_out'));
+
+            } else {
+                // === ABSEN MASUK ===
+                // Simpan jam shift sesuai pilihan di dropdown
                 $newAttendance = Attendance::create([
-                    'user_id' => Auth::user()->id,
+                    'user_id' => $user->id,
                     'schedule_latitude' => $schedule->officeLocation->latitude,
                     'schedule_longitude' => $schedule->officeLocation->longitude,
-                    'schedule_start_time' => $schedule->shift->start_time,
-                    'schedule_end_time' => $schedule->shift->end_time,
+                    
+                    // PENTING: Gunakan data dari Shift yang dipilih user
+                    'schedule_start_time' => $selectedShift->start_time,
+                    'schedule_end_time' => $selectedShift->end_time,
+                    
                     'start_latitude' => $this->latitude,
                     'start_longitude' => $this->longitude,
                     'start_time' => $now->toDateTimeString(),
@@ -117,18 +175,6 @@ class Presensi extends Component
                 ]);
 
                 event(new AttendanceRecorded($newAttendance, 'check_in'));
-
-            } elseif (!$attendance->end_time) {
-                // --- ABSEN PULANG ---
-                $attendance->update([
-                    'end_latitude' => $this->latitude,
-                    'end_longitude' => $this->longitude,
-                    'end_time' => $now->toDateTimeString(),
-                    'end_image' => $photoPath,
-                ]);
-
-                // PEMICU NOTIFIKASI PULANG (PENTING!)
-                event(new AttendanceRecorded($attendance, 'check_out'));
             }
 
             return redirect()->route('presensi');
