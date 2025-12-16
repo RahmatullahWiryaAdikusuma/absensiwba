@@ -4,27 +4,28 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\AttendanceResource\Pages;
 use App\Models\Attendance;
-use App\Models\Office; // Import Model Office
+use App\Models\Office;  
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\ImageColumn; 
-use Filament\Tables\Filters\SelectFilter; // Import Filter
-use Filament\Tables\Filters\Filter; // Import Filter
+use Filament\Tables\Filters\SelectFilter;  
+use Filament\Tables\Filters\Filter;  
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class AttendanceResource extends Resource
 {
     protected static ?string $model = Attendance::class;
-
-    protected static ?string $navigationIcon = 'heroicon-o-clock';
+    protected static ?string $navigationLabel = 'Presensi';
+    protected static ?string $modelLabel = 'Presensi';
+    protected static ?string $navigationIcon = 'heroicon-o-camera';
 
     protected static ?int $navigationSort = 8;
 
-    protected static ?string $navigationGroup = 'Attendance Management';
+    protected static ?string $navigationGroup = 'Manajemen Kehadiran';
 
     public static function form(Form $form): Form
     {
@@ -60,7 +61,7 @@ class AttendanceResource extends Resource
             ->columns([ 
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Pegawai')
-                    ->searchable() // Fitur Pencarian Nama
+                    ->searchable()  
                     ->sortable()
                     ->description(fn (Attendance $record) => $record->user->position->name ?? '-'),
 
@@ -112,21 +113,18 @@ class AttendanceResource extends Resource
                     ->description(fn (Attendance $record): string => $record->end_time ? 'Durasi: '.$record->workDuration() : 'Sedang Bekerja'),
             ])
             ->defaultSort('created_at', 'desc')
-            ->filters([
-                // FILTER LOKASI KANTOR
+            ->filters([ 
                 SelectFilter::make('office_id')
                     ->label('Lokasi Kantor')
                     ->options(Office::pluck('name', 'id'))
                     ->query(function (Builder $query, array $data) {
-                        if (empty($data['value'])) return $query;
-                        // Filter user berdasarkan jadwal kantornya
+                        if (empty($data['value'])) return $query; 
                         return $query->whereHas('user.schedule', function (Builder $q) use ($data) {
                             $q->where('office_id', $data['value']);
                         });
                     })
                     ->searchable(),
-
-                // FILTER TANGGAL
+ 
                 Filter::make('created_at')
                     ->form([
                         Forms\Components\DatePicker::make('from')->label('Dari Tanggal'),

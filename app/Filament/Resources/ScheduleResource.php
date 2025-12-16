@@ -11,7 +11,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Tables\Filters\SelectFilter; // Import
+use Filament\Tables\Filters\SelectFilter;  
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
@@ -21,12 +21,11 @@ use App\Models\OfficeLocation;
 class ScheduleResource extends Resource
 {
     protected static ?string $model = Schedule::class;
-
+    protected static ?string $navigationLabel = 'Jadwal Masuk';
+    protected static ?string $modelLabel = 'Jadwal Masuk';
     protected static ?string $navigationIcon = 'heroicon-m-calendar-days';
     protected static ?int $navigationSort = 7;
-
-    protected static ?string $navigationGroup = 'Attendance Management';
-
+    protected static ?string $navigationGroup = 'Manajemen Kehadiran';
     public static function form(Form $form): Form
     {
         return $form
@@ -106,7 +105,7 @@ class ScheduleResource extends Resource
                     ->description(fn (Schedule $record): string => $record->shift->start_time.' - '.$record->shift->end_time)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('office.name')
-                    ->label('Titik Lokasi') // Sesuai label di tabel
+                    ->label('Titik Lokasi')   
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
@@ -118,7 +117,6 @@ class ScheduleResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                // FILTER BY TITIK LOKASI (OFFICE)
                 SelectFilter::make('office_id')
                     ->label('Filter Titik Lokasi')
                     ->relationship('office', 'name')

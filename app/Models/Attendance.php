@@ -32,26 +32,44 @@ class Attendance extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function isLate()
+    public function isLate(): bool
     {
-        $scheduleStartTime = Carbon::parse($this->schedule_start_time);
-        $startTime = Carbon::parse($this->start_time);
+        // Jika data jam tidak lengkap, anggap tidak telat
+        if (!$this->schedule_start_time || !$this->start_time) {
+            return false;
+        }
 
-        return $startTime->greaterThan($scheduleStartTime);
+        // 1. Ambil Tanggal dari start_time (Contoh: 2025-12-15)
+        $attendanceDate = Carbon::parse($this->start_time)->format('Y-m-d');
+        
+        // 2. Ambil Jam dari schedule (Contoh: 08:00:00)
+        // Kita parse dulu untuk memastikan formatnya bersih H:i:s
+        $scheduleTimeOnly = Carbon::parse($this->schedule_start_time)->format('H:i:s');
+
+        // 3. GABUNGKAN Tanggal Absen + Jam Jadwal
+        // Hasil: 2025-12-15 08:00:00
+        $fixedScheduleTime = Carbon::parse($attendanceDate . ' ' . $scheduleTimeOnly);
+
+        // 4. Tambahkan toleransi keterlambatan (misal 1 menit) jika perlu
+        // $fixedScheduleTime->addMinutes(1); 
+
+        // 5. Bandingkan
+        return Carbon::parse($this->start_time)->gt($fixedScheduleTime);
     }
 
-    public function workDuration()
+    /**
+     * Hitung durasi kerja
+     */
+    public function workDuration(): string
     {
-        $startTime = Carbon::parse($this->start_time);
-        $endTime = Carbon::parse($this->end_time);
+        if (!$this->end_time) {
+            return '-';
+        }
 
-        $duration = $startTime->diff($endTime);
+        $start = Carbon::parse($this->start_time);
+        $end = Carbon::parse($this->end_time);
 
-        $hours = $duration->h;
-        $minutes = $duration->i;
-
-        return "{$hours} jam {$minutes} menit";
-
+        return $start->diff($end)->format('%H Jam %I Menit');
     }
 
 

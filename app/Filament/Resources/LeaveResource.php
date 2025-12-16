@@ -22,7 +22,7 @@ class LeaveResource extends Resource
     protected static ?string $navigationLabel = 'Izin (Sakit/Lainnya)';
     protected static ?string $modelLabel = 'Izin';
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $navigationGroup = 'Attendance Management';
+    protected static ?string $navigationGroup = 'Manajemen Kehadiran';
     protected static ?int $navigationSort = 10;
 
     public static function form(Form $form): Form
@@ -120,8 +120,7 @@ class LeaveResource extends Resource
                         default => 'gray',
                     }),
             ])
-            ->filters([
-                // 1. Filter Status Ajuan
+            ->filters([ 
                 SelectFilter::make('status')
                     ->label('Status Ajuan')
                     ->options([
@@ -129,8 +128,7 @@ class LeaveResource extends Resource
                         'approved' => 'Disetujui',
                         'rejected' => 'Ditolak',
                     ]),
-                
-                // 2. Filter Lokasi Kantor
+                 
                 SelectFilter::make('office_id')
                     ->label('Lokasi Kantor')
                     ->options(Office::pluck('name', 'id'))

@@ -119,4 +119,12 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->hasMany(LeaveCuti::class);
     }
+      public function placements(): HasMany
+    {
+        return $this->hasMany(Placement::class);
+    }
+    public function activePlacement()
+    {
+        return $this->hasOne(Placement::class)->where('placement_status', 'active')->latest('start_date');
+    }
 }

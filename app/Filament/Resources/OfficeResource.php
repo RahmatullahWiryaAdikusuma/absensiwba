@@ -24,12 +24,11 @@ use Filament\Forms\Set;
 class OfficeResource extends Resource
 {
     protected static ?string $model = Office::class;
-
+    protected static ?string $navigationLabel = 'Titik Lokasi';
+    protected static ?string $modelLabel = 'Titik Lokasi';
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
-
     protected static ?int $navigationSort = 6;
-
-    protected static ?string $navigationGroup = 'Office Management';
+    protected static ?string $navigationGroup = 'Manajemen Lokasi';
 
     public static function form(Form $form): Form
     {

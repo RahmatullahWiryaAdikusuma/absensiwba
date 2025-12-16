@@ -4,16 +4,18 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
-use App\Models\Office; // Import
+use App\Models\Office;  
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\ToggleColumn;
-use Filament\Tables\Filters\TernaryFilter; // Import Ternary
-use Filament\Tables\Filters\SelectFilter; // Import Select
+use Filament\Tables\Filters\TernaryFilter;  
+use Filament\Tables\Filters\SelectFilter;  
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Toggle;
 
 class UserResource extends Resource
 {
@@ -63,6 +65,21 @@ class UserResource extends Resource
                     ->multiple()
                     ->preload()
                     ->searchable(),
+
+                    Section::make('Status Kepegawaian')
+                ->schema([
+                    Toggle::make('is_wfa')
+                        ->label('Status WFA / Dinas Luar')
+                        ->helperText('Aktifkan jika karyawan sedang dinas luar agar bisa absen di mana saja (Bypass Radius).')
+                        ->onColor('success')
+                        ->offColor('danger'),
+
+                    Toggle::make('is_banned')
+                        ->label('Non-Aktifkan Karyawan (Banned)')
+                        ->helperText('Jika aktif, karyawan tidak bisa login atau melakukan absensi.')
+                        ->onColor('danger')
+                        ->offColor('success'),
+                ])->columns(2), 
             ]);
     }
 
