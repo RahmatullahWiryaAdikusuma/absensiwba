@@ -19,39 +19,51 @@ class Presensi extends Component
 
     public $latitude;
     public $longitude;
-    public $insideRadius = false;
     public $photo;
     public $shift_id;
     public $shifts;
     public $locationHistory; 
+    public $userStatus = []; 
 
     public function mount()
     {
         $user = Auth::user();
-
-        // 1. CEK BANNED SAAT PERTAMA LOAD
-        if ($user->is_banned) {
-            // Kita biarkan saja, nanti di View kita blokir tampilannya
-        }
-
         $schedule = Schedule::with(['shift', 'office'])->where('user_id', $user->id)->first();
+        
         $this->shifts = Shift::all();
         
         if ($schedule) {
             $this->shift_id = $schedule->shift_id;
-        } elseif ($this->shifts->isNotEmpty()) {
-            $this->shift_id = $this->shifts->first()->id;
+            
+            $this->userStatus = [
+                'is_wfa' => (bool) $schedule->is_wfa,
+                'is_banned' => (bool) $schedule->is_banned,
+                'office_lat' => $schedule->office ? $schedule->office->latitude : 0,
+                'office_lng' => $schedule->office ? $schedule->office->longitude : 0,
+                'office_radius' => $schedule->office ? ($schedule->office->radius ?? 50) : 50,
+            ];
+        } else {
+            $this->userStatus = [
+                'is_wfa' => false,
+                'is_banned' => false,
+                'office_lat' => 0,
+                'office_lng' => 0,
+                'office_radius' => 50,
+            ];
+
+            if ($this->shifts->isNotEmpty()) {
+                $this->shift_id = $this->shifts->first()->id;
+            }
         }
     }
 
-    public function updatedLatitude() { $this->checkRadius(); }
-    public function updatedLongitude() { $this->checkRadius(); }
+    // Tidak perlu cek radius di setiap update koordinat JS, cukup saat store saja untuk efisiensi
+    public function updatedLatitude() { }
+    public function updatedLongitude() { }
 
     public function render()
     {
         $user = Auth::user();
-        $schedule = Schedule::with('office')->where('user_id', $user->id)->first();
-
         $attendance = Attendance::where('user_id', $user->id)
                             ->whereNull('end_time')->latest()->first();
                             
@@ -62,10 +74,11 @@ class Presensi extends Component
             }
         }
 
+        $schedule = Schedule::with('office')->where('user_id', $user->id)->first();
+
         return view('livewire.presensi', [
             'schedule' => $schedule,
             'attendance' => $attendance,
-            'user' => $user // PASSING DATA USER KE VIEW
         ]);
     }
 
@@ -79,32 +92,6 @@ class Presensi extends Component
         return ($dist * 60 * 1.1515 * 1.609344);
     }
 
-    public function checkRadius()
-    {
-        $user = Auth::user();
-        
-        // --- LOGIKA 1: JIKA USER WFA, BYPASS RADIUS ---
-        // Karyawan WFA boleh absen dari mana saja (rumah/klien)
-        if ($user->is_wfa) {
-            $this->insideRadius = true;
-            return;
-        }
-        // ----------------------------------------------
-
-        $schedule = Schedule::with('office')->where('user_id', $user->id)->first();
-
-        if ($schedule && $schedule->office) {
-            $officeLat = $schedule->office->latitude;
-            $officeLng = $schedule->office->longitude;
-            $radiusKm = ($schedule->office->radius ?? 50) / 1000; 
-
-            $distance = $this->distance($this->latitude, $this->longitude, $officeLat, $officeLng);
-            $this->insideRadius = $distance <= $radiusKm;
-        } else {
-            $this->insideRadius = false; 
-        }
-    }
-
     public function store()
     {
         $this->validate([
@@ -115,29 +102,32 @@ class Presensi extends Component
         ]);
 
         $user = Auth::user();
+        $schedule = Schedule::with(['office', 'shift'])->where('user_id', $user->id)->first();
 
-        // --- LOGIKA 2: CEK BANNED SAAT SUBMIT ---
-        if ($user->is_banned) {
-            session()->flash('error', 'Akun Anda dinonaktifkan. Anda tidak bisa absen.');
+        if ($schedule && $schedule->is_banned) {
+            session()->flash('error', 'Akun Anda dibekukan (Banned). Tidak bisa absen.');
             return;
         }
-        
-        $schedule = Schedule::with(['office', 'shift'])->where('user_id', $user->id)->first();
-        
-        // Cek radius ulang (Server Side Protection)
-        $this->checkRadius();
 
-        // Jika BUKAN WFA, dan diluar radius -> Tolak
-        if (!$this->insideRadius) {
-            if (!$user->is_wfa) {
-                session()->flash('error', 'Posisi Anda diluar radius kantor!');
-                return;
+        // Cek Radius (Server Side)
+        $insideRadius = false;
+        if ($schedule) {
+            if ($schedule->is_wfa) {
+                $insideRadius = true;
+            } elseif ($schedule->office) {
+                $dist = $this->distance($this->latitude, $this->longitude, $schedule->office->latitude, $schedule->office->longitude);
+                $radiusKm = ($schedule->office->radius ?? 50) / 1000;
+                $insideRadius = $dist <= $radiusKm;
             }
+        }
+
+        if (!$insideRadius) {
+            session()->flash('error', 'Validasi Gagal: Anda terdeteksi di luar radius kantor.');
+            return;
         }
 
         $today = Carbon::today()->format('Y-m-d');
         
-        // Cek Cuti
         $isOnLeave = Leave::where('user_id', $user->id)->where('status', 'approved')
             ->whereDate('start_date', '<=', $today)->whereDate('end_date', '>=', $today)->exists();
         $isOnCuti = LeaveCuti::where('user_id', $user->id)->where('status', 'approved')
@@ -156,14 +146,10 @@ class Presensi extends Component
             $photoPath = $this->photo->store('attendance-photos', 'public');
             $selectedShift = Shift::find($this->shift_id);
 
-            // Tentukan koordinat referensi jadwal
-            // Jika WFA: Koordinat jadwal dianggap sama dengan posisi user saat ini (agar report map tetap bagus)
-            // Jika WFO: Koordinat jadwal adalah koordinat kantor asli
-            $refLat = $user->is_wfa ? $this->latitude : $schedule->office->latitude;
-            $refLng = $user->is_wfa ? $this->longitude : $schedule->office->longitude;
+            $refLat = $schedule->is_wfa ? $this->latitude : $schedule->office->latitude;
+            $refLng = $schedule->is_wfa ? $this->longitude : $schedule->office->longitude;
 
             if ($activeAttendance) {
-                // Absen Pulang
                 $activeAttendance->update([
                     'end_latitude' => $this->latitude,
                     'end_longitude' => $this->longitude,
@@ -171,9 +157,8 @@ class Presensi extends Component
                     'end_image' => $photoPath,
                 ]);
                 event(new AttendanceRecorded($activeAttendance, 'check_out'));
-                session()->flash('message', 'Hati-hati di jalan! Absen pulang sukses.');
+                session()->flash('message', 'Absen Pulang Berhasil.');
             } else {
-                // Absen Masuk
                 $newAttendance = Attendance::create([
                     'user_id' => $user->id,
                     'schedule_latitude' => $refLat,
@@ -186,7 +171,7 @@ class Presensi extends Component
                     'start_image' => $photoPath,
                 ]);
                 event(new AttendanceRecorded($newAttendance, 'check_in'));
-                session()->flash('message', 'Selamat bekerja! Absen masuk sukses.');
+                session()->flash('message', 'Absen Masuk Berhasil.');
             }
             return redirect()->route('presensi');
         } else {

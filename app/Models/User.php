@@ -31,6 +31,8 @@ class User extends Authenticatable implements FilamentUser
         'password',
         'image',
         'position_id',
+        'is_wfa', 
+        'is_banned',
         'is_active',
     ];
 
@@ -54,6 +56,8 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_wfa' => 'boolean',     
+            'is_banned' => 'boolean',
         ];
     }
 
