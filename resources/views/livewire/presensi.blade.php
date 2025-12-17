@@ -1,13 +1,11 @@
-<div class="min-h-screen bg-gray-50 py-6 px-4 sm:px-6 lg:px-8 flex justify-center" 
-     x-data="attendanceSystem()" 
+<div class="min-h-screen bg-gray-50 py-6 px-4 sm:px-6 lg:px-8 flex justify-center"
+     x-data="attendanceApp()"
      x-init="initSystem()">
-    
+
     <div class="max-w-md w-full space-y-6">
 
         <div class="text-center">
-            <h2 class="mt-2 text-3xl font-extrabold text-gray-900">
-                Presensi WBA
-            </h2>
+            <h2 class="mt-2 text-3xl font-extrabold text-gray-900">Presensi WBA</h2>
             <p class="mt-1 text-sm text-gray-600">Sistem Absensi Terintegrasi</p>
         </div>
 
@@ -16,106 +14,97 @@
                 <div class="flex"><div class="ml-3"><h3 class="text-sm font-medium text-red-800">Gagal</h3><div class="mt-1 text-sm text-red-700">{{ session('error') }}</div></div></div>
             </div>
         @endif
-
         @if (session()->has('message'))
             <div class="rounded-md bg-green-50 p-4 border-l-4 border-green-400 mb-4">
                 <div class="flex"><div class="ml-3"><h3 class="text-sm font-medium text-green-800">Sukses</h3><div class="mt-1 text-sm text-green-700">{{ session('message') }}</div></div></div>
             </div>
         @endif
 
-        @if($userStatus['is_banned'])
-            <div class="bg-red-100 border-t-4 border-red-500 rounded-b text-red-900 px-4 py-3 shadow-md">
-                <div class="flex">
-                    <div class="py-1"><svg class="fill-current h-6 w-6 text-red-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zm12.73-1.41A8 8 0 1 0 4.34 4.34a8 8 0 0 0 11.32 11.32zM9 11V9h2v6H9v-4zm0-6h2v2H9V5z"/></svg></div>
-                    <div><p class="font-bold">AKUN DINONAKTIFKAN</p><p class="text-sm">Hubungi Administrator.</p></div>
-                </div>
+        @if($geoConfig['is_banned'])
+             <div class="bg-red-600 text-white p-6 rounded-xl shadow-lg text-center">
+                <svg class="h-16 w-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <h2 class="text-xl font-bold">AKUN DIBEKUKAN</h2>
+                <p class="mt-2">Hubungi Administrator.</p>
             </div>
         @else
             <div class="bg-white shadow-xl rounded-2xl overflow-hidden">
                 <div class="px-6 py-5 bg-slate-50 border-b border-gray-200">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg leading-6 font-bold text-gray-900 flex items-center">
-                            Halo, {{ Auth::user()->name }}
-                        </h3>
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-lg leading-6 font-bold text-gray-900">Halo, {{ Auth::user()->name }}</h3>
                         <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium"
                               :class="config.is_wfa ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-blue-100 text-blue-800'">
                             <span x-text="config.is_wfa ? 'MODE WFA' : 'MODE KANTOR'"></span>
                         </span>
                     </div>
-                    
                     @if($schedule)
-                        <div class="text-sm text-gray-600 space-y-3">
-                            <p><strong>Lokasi:</strong> <span x-text="config.is_wfa ? 'Bebas (Dinas)' : '{{ $schedule->office->name ?? '-' }}'"></span></p>
-                            <div>
-                                <label for="shift_id" class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Shift</label>
-                                <select wire:model="shift_id" id="shift_id" class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm" {{ $attendance && !$attendance->end_time ? 'disabled' : '' }}>
-                                    @foreach($shifts as $shift)
-                                        <option value="{{ $shift->id }}">{{ $shift->name }} ({{ \Carbon\Carbon::parse($shift->start_time)->format('H:i') }} - {{ \Carbon\Carbon::parse($shift->end_time)->format('H:i') }})</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                    <div class="text-sm text-gray-600">
+                        <p>Lokasi: <span x-text="config.is_wfa ? 'Bebas (Dinas)' : '{{ $schedule->office->name ?? '-' }}'"></span></p>
+                        <div class="mt-2">
+                            <label class="block text-xs font-bold uppercase text-gray-500">Shift</label>
+                            <select wire:model="shift_id" class="block w-full mt-1 py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm sm:text-sm" {{ $attendance && !$attendance->end_time ? 'disabled' : '' }}>
+                                @foreach($shifts as $shift)
+                                    <option value="{{ $shift->id }}">{{ $shift->name }} ({{ \Carbon\Carbon::parse($shift->start_time)->format('H:i') }} - {{ \Carbon\Carbon::parse($shift->end_time)->format('H:i') }})</option>
+                                @endforeach
+                            </select>
                         </div>
-                    @else
-                        <div class="text-sm text-yellow-600 bg-yellow-50 p-2 rounded">Jadwal belum tersedia.</div>
+                    </div>
                     @endif
                 </div>
 
-                <div class="p-6 bg-white">
+                <div class="p-6 bg-white space-y-4">
                     @if($schedule)
-                        <div class="relative rounded-xl overflow-hidden shadow-md border border-gray-200 mb-4">
-                            <div id="map" style="height: 250px; width: 100%;" class="z-0" wire:ignore></div>
+                    
+                    <div class="relative rounded-xl overflow-hidden shadow-md border border-gray-200 h-64">
+                        <div id="map" style="height: 100%; width: 100%;" wire:ignore></div>
+                        <div class="absolute top-2 right-2 z-[9999] flex flex-col gap-1 items-end">
+                            <span class="px-2 py-1 rounded text-[10px] font-bold shadow bg-white/90"
+                                  :class="gpsReady ? 'text-green-600' : 'text-red-600'"
+                                  x-text="gpsText"></span>
                             
-                            <div class="absolute top-3 right-3 z-10 flex flex-col gap-2 items-end">
-                                <span class="px-3 py-1 rounded-full text-xs font-bold shadow-sm flex items-center gap-1 transition-colors duration-300"
-                                      :class="insideRadius ? 'bg-green-500 text-white' : 'bg-red-500 text-white'">
-                                    <span x-text="insideRadius ? (config.is_wfa ? 'WFA (OK)' : 'Dalam Radius') : 'Luar Radius'"></span>
-                                </span>
-
-                                <span class="px-3 py-1 rounded-full text-xs font-bold shadow-sm border transition-colors duration-300"
-                                      :class="gpsStatusClass"
-                                      x-text="gpsStatusText">
-                                    Menunggu GPS...
-                                </span>
-                            </div>
+                            <template x-if="!config.is_wfa">
+                                <span class="px-2 py-1 rounded text-[10px] font-bold shadow text-white"
+                                      :class="insideRadius ? 'bg-green-500' : 'bg-red-500'"
+                                      x-text="insideRadius ? 'DALAM RADIUS' : 'LUAR RADIUS'"></span>
+                            </template>
                         </div>
+                    </div>
 
-                        <div x-show="!config.is_wfa && !insideRadius && gpsStatusText !== 'Menunggu GPS...'" class="mb-4 text-center p-2 bg-orange-50 rounded-lg border border-orange-200">
-                            <p class="text-xs text-orange-700">
-                                Anda berada <strong x-text="Math.round(currentDistance)"></strong> meter dari kantor.<br>
-                                Maksimal radius: <strong x-text="config.office_radius"></strong> meter.
-                            </p>
+                    <div x-show="!config.is_wfa && gpsReady" class="text-center bg-gray-100 p-2 rounded text-xs text-gray-600">
+                        Jarak ke Kantor: <strong x-text="distance + ' meter'"></strong> (Maks: <span x-text="config.radius_meter"></span>m)
+                    </div>
+
+                    <div class="relative bg-black rounded-xl overflow-hidden shadow-inner h-64" wire:ignore>
+                        <video x-ref="video" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                        <canvas x-ref="canvas" class="hidden"></canvas>
+                        <div class="absolute bottom-2 left-0 right-0 text-center">
+                            <span class="text-[10px] text-white bg-black/50 px-2 py-1 rounded-full">Preview Kamera</span>
                         </div>
+                    </div>
 
-                        <div x-show="insideRadius" x-transition.opacity.duration.500ms>
-                            <div class="mb-4">
-                                <div class="relative w-full h-64 bg-black rounded-xl overflow-hidden shadow-inner border border-gray-300" wire:ignore>
-                                    <video x-ref="video" autoplay playsinline muted class="w-full h-full object-cover"></video>
-                                    <div class="absolute bottom-2 left-0 right-0 text-center">
-                                        <span class="text-xs text-white bg-black/50 px-2 py-1 rounded-full">Kamera Aktif</span>
-                                    </div>
-                                </div>
-                                <canvas x-ref="canvas" class="hidden"></canvas>
-                            </div>
-
-                            <button @click="captureAndStore()" 
-                                    :disabled="loading"
-                                    class="w-full py-4 px-4 text-lg font-extrabold rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow-lg flex justify-center items-center gap-2 disabled:bg-gray-400">
-                                <span x-show="!loading" class="flex items-center gap-2">
+                    <button type="button"
+                            @click="capture()"
+                            :disabled="!canSubmit || loading"
+                            class="w-full py-4 px-4 text-lg font-extrabold rounded-xl text-white shadow-lg flex justify-center items-center gap-2 transition-all"
+                            :class="(!canSubmit || loading) ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'">
+                        
+                        <span x-show="loading" class="animate-pulse">Memproses Absen...</span>
+                        
+                        <span x-show="!loading" class="flex items-center gap-2">
+                            <template x-if="!gpsReady"><span>TUNGGU GPS...</span></template>
+                            <template x-if="gpsReady && isFakeGPS"><span>FAKE GPS TERDETEKSI</span></template>
+                            <template x-if="gpsReady && !isFakeGPS && !insideRadius && !config.is_wfa"><span>DILUAR LOKASI</span></template>
+                            <template x-if="gpsReady && !isFakeGPS && (insideRadius || config.is_wfa)">
+                                <span class="flex items-center gap-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                    {{ $attendance ? 'AMBIL FOTO & PULANG' : 'AMBIL FOTO & MASUK' }}
+                                    {{ $attendance ? 'FOTO & PULANG' : 'FOTO & MASUK' }}
                                 </span>
-                                <span x-show="loading">Memproses...</span>
-                            </button>
-                        </div>
-
-                        <div x-show="!insideRadius" x-transition>
-                            <button @click="forceRefreshLocation()" class="w-full py-3 px-4 border border-gray-300 font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 shadow-sm flex justify-center items-center gap-2">
-                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                Refresh Lokasi
-                            </button>
-                            <p class="text-center text-xs text-gray-500 mt-2">Masuk ke area kantor untuk mengaktifkan kamera.</p>
-                        </div>
-
+                            </template>
+                        </span>
+                    </button>
+                    
+                    <button @click="location.reload()" class="w-full text-xs text-blue-500 underline mt-2">
+                        Refresh Halaman jika Macet
+                    </button>
                     @endif
                 </div>
             </div>
@@ -126,223 +115,191 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        function attendanceSystem() {
+        function attendanceApp() {
             return {
+                config: @json($geoConfig),
                 map: null,
                 marker: null,
+                circle: null,
+                
+                // State
+                gpsReady: false,
                 insideRadius: false,
-                currentDistance: 0,
-                loading: false,
-                cameraActive: false, // Flag agar initCamera tidak dipanggil berulang kali
-                config: @json($userStatus),
-
-                // Status GPS
-                gpsStatusText: 'Menunggu GPS...',
-                gpsStatusClass: 'bg-blue-100 text-blue-800 border-blue-200',
                 isFakeGPS: false,
-                locationHistory: [],
+                distance: 0,
+                loading: false,
+                gpsText: 'Mencari GPS...',
+                
+                // Vars
+                cameraStarted: false,
+                myLat: 0,
+                myLng: 0,
+                history: [],
 
                 initSystem() {
-                    // 1. Cek HTTPS
-                    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-                        alert('Peringatan: Wajib menggunakan HTTPS agar kamera berfungsi!');
-                    }
+                    console.log('=== DEBUG CONFIG ===');
+                    console.log('Config received:', this.config);
+                    console.log('radius_meter:', this.config.radius_meter);
+                    console.log('office_lat:', this.config.office_lat);
+                    console.log('office_lng:', this.config.office_lng);
+                    console.log('is_wfa:', this.config.is_wfa);
+                    console.log('is_banned:', this.config.is_banned);
+                    console.log('===================');
+                    
+                    if(this.config.is_banned) return;
 
-                    // 2. Init Map
+                    // 1. Jalankan Maps
                     this.initMap();
 
-                    // 3. Mulai Tracking Lokasi SAJA (Kamera nanti setelah lokasi valid)
-                    this.startTracking();
+                    // 2. Jalankan GPS Tracking (Kamera akan otomatis menyala setelah GPS valid)
+                    this.watchLocation();
+                },
+
+                startCamera() {
+                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+                            .then(stream => {
+                                this.$refs.video.srcObject = stream;
+                            })
+                            .catch(err => {
+                                alert("Gagal akses kamera: " + err.message + ". Pastikan di HTTPS/Localhost.");
+                            });
+                    }
                 },
 
                 initMap() {
-                    const center = (this.config.office_lat && this.config.office_lng) 
-                        ? [this.config.office_lat, this.config.office_lng] 
-                        : [-6.200000, 106.816666];
-
+                    const center = (this.config.office_lat) ? [this.config.office_lat, this.config.office_lng] : [-6.2088, 106.8456];
+                    
                     this.map = L.map('map', { zoomControl: false }).setView(center, 15);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(this.map);
 
-                    // Gambar lingkaran jika WFO
+                    // Gambar Radius Kantor jika WFO
                     if (!this.config.is_wfa && this.config.office_lat) {
-                        L.circle(center, {
-                            color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.2, radius: this.config.office_radius
+                        this.circle = L.circle(center, {
+                            color: 'red', fillColor: '#f03', fillOpacity: 0.2, radius: this.config.radius_meter
                         }).addTo(this.map);
                     }
                 },
 
-                startTracking() {
-                    if (navigator.geolocation) {
-                        navigator.geolocation.watchPosition(
-                            (position) => this.handlePosition(position),
-                            (error) => {
-                                console.error(error);
-                                this.gpsStatusText = 'GPS Error: ' + error.message;
-                                this.gpsStatusClass = 'bg-red-100 text-red-800 border-red-200';
-                            },
-                            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                        );
-                    } else {
-                        alert("Browser tidak mendukung Geolocation.");
+                watchLocation() {
+                    if (!navigator.geolocation) {
+                        alert("Browser tidak support GPS.");
+                        return;
                     }
+                    navigator.geolocation.watchPosition(
+                        (pos) => {
+                            this.myLat = pos.coords.latitude;
+                            this.myLng = pos.coords.longitude;
+                            this.gpsReady = true;
+                            this.gpsText = 'GPS Aktif';
+
+                            this.updateMap();
+                            this.checkLogic();
+                        },
+                        (err) => {
+                            this.gpsText = 'GPS Error: ' + err.message;
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
                 },
 
-                handlePosition(position) {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-
-                    // Update UI Status (Un-stuck)
-                    if(this.gpsStatusText === 'Menunggu GPS...') {
-                        this.gpsStatusText = 'Lokasi Ditemukan';
-                        this.gpsStatusClass = 'bg-green-100 text-green-800 border-green-200';
-                    }
-
-                    // Update Map Marker
-                    if (this.marker) this.map.removeLayer(this.marker);
-                    this.marker = L.marker([lat, lng]).addTo(this.map);
-                    this.map.setView([lat, lng], 17);
-
-                    // Cek Radius Logic
-                    this.checkRadiusLogic(lat, lng);
-
-                    // Cek Fake GPS
-                    this.checkFakeGPS(lat, lng);
-
-                    // Kirim ke Livewire (silent update untuk validasi server)
-                    @this.set('latitude', lat, true);
-                    @this.set('longitude', lng, true);
-                },
-
-                checkRadiusLogic(userLat, userLng) {
-                    let isInside = false;
-
-                    if (this.config.is_wfa) {
-                        isInside = true;
-                        this.currentDistance = 0;
-                    } else if (this.config.office_lat) {
-                        const dist = this.haversineDistance(
-                            [userLat, userLng], 
-                            [this.config.office_lat, this.config.office_lng]
-                        );
-                        this.currentDistance = dist;
-                        isInside = dist <= this.config.office_radius;
-                    }
-
-                    this.insideRadius = isInside;
-
-                    // LOGIKA UTAMA KAMERA: 
-                    // Jika masuk radius DAN kamera belum nyala -> Nyalakan Kamera
-                    if (isInside && !this.cameraActive) {
-                        this.initCamera();
-                    }
-                },
-
-                initCamera() {
-                    this.cameraActive = true; // Tandai sedang mencoba menyalakan
+                updateMap() {
+                    if(!this.map) return;
                     
-                    // Panggil getUserMedia
-                    // Kita gunakan timeout kecil untuk memastikan x-show sudah merender elemen <video>
-                    setTimeout(() => {
-                        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-                                .then(stream => {
-                                    if(this.$refs.video) {
-                                        this.$refs.video.srcObject = stream;
-                                    }
-                                })
-                                .catch(err => {
-                                    console.error("Camera Error:", err);
-                                    alert("Gagal akses kamera. Pastikan izin diberikan.");
-                                    this.cameraActive = false; // Reset flag jika gagal
-                                });
-                        }
-                    }, 300);
+                    if (this.marker) this.map.removeLayer(this.marker);
+                    this.marker = L.marker([this.myLat, this.myLng]).addTo(this.map);
+                    this.map.setView([this.myLat, this.myLng]); 
                 },
 
-                checkFakeGPS(lat, lng) {
-                    const now = new Date().getTime();
-                    this.locationHistory.push({ lat, lng, time: now });
+                checkLogic() {
+                    // 1. Cek Radius
+                    if (this.config.is_wfa) {
+                        this.insideRadius = true;
+                        this.distance = 0;
+                    } else {
+                        const dist = this.getDistanceFromLatLonInKm(this.myLat, this.myLng, this.config.office_lat, this.config.office_lng) * 1000; // ke meter
+                        this.distance = Math.round(dist);
+                        this.insideRadius = this.distance <= this.config.radius_meter;
+                    }
 
-                    if (this.locationHistory.length > 10) this.locationHistory.shift();
-
-                    if (this.locationHistory.length >= 3) {
-                        let consistent = true;
-                        for (let i = 1; i < this.locationHistory.length; i++) {
-                            const prev = this.locationHistory[i - 1];
-                            const curr = this.locationHistory[i];
-                            const dist = this.haversineDistance([prev.lat, prev.lng], [curr.lat, curr.lng]);
-                            const timeDiff = (curr.time - prev.time) / 1000;
-
-                            if (timeDiff > 0) {
-                                const speed = dist / timeDiff;
-                                if (speed > 100 && dist > 50) { // 360km/h
-                                    consistent = false;
-                                    break;
-                                }
+                    // 2. Cek Fake GPS (Speed Check)
+                    const now = Date.now();
+                    this.history.push({ lat: this.myLat, lng: this.myLng, time: now });
+                    if(this.history.length > 5) this.history.shift();
+                    
+                    if(this.history.length > 1) {
+                        const last = this.history[this.history.length - 1];
+                        const prev = this.history[this.history.length - 2];
+                        const distMove = this.getDistanceFromLatLonInKm(prev.lat, prev.lng, last.lat, last.lng) * 1000;
+                        const timeDiff = (last.time - prev.time) / 1000; // detik
+                        
+                        if(timeDiff > 0) {
+                            const speed = distMove / timeDiff; // meter/detik
+                            // 100 m/s = 360 km/jam -> Mustahil
+                            if(speed > 100 && distMove > 100) {
+                                this.isFakeGPS = true;
+                            } else {
+                                this.isFakeGPS = false;
                             }
                         }
-                        
-                        if (!consistent) {
-                            this.isFakeGPS = true;
-                            this.gpsStatusText = 'Terdeteksi Fake GPS!';
-                            this.gpsStatusClass = 'bg-red-600 text-white border-red-700 animate-pulse';
-                        } else {
-                            this.isFakeGPS = false;
-                            this.gpsStatusText = 'GPS Terverifikasi';
-                            this.gpsStatusClass = 'bg-green-100 text-green-800 border-green-200';
-                        }
+                    }
+
+                    // 3. Auto-start kamera setelah kondisi terpenuhi
+                    if (!this.cameraStarted && this.gpsReady && !this.isFakeGPS && (this.insideRadius || this.config.is_wfa)) {
+                        this.startCamera();
+                        this.cameraStarted = true;
                     }
                 },
 
-                async captureAndStore() {
-                    if (this.isFakeGPS) {
-                        alert('Sistem mendeteksi penggunaan Fake GPS. Mohon gunakan GPS asli.');
-                        return;
-                    }
+                get canSubmit() {
+                    return this.gpsReady && !this.isFakeGPS && (this.insideRadius || this.config.is_wfa);
+                },
 
-                    if (!this.$refs.video || !this.$refs.video.srcObject) {
-                        alert("Kamera belum siap. Coba refresh halaman.");
-                        this.initCamera(); 
-                        return;
+                capture() {
+                    if (!this.canSubmit) return;
+                    
+                    const video = this.$refs.video;
+                    const canvas = this.$refs.canvas;
+                    
+                    if (!video.srcObject) {
+                        alert("Kamera belum siap."); return;
                     }
 
                     this.loading = true;
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
 
-                    const context = this.$refs.canvas.getContext('2d');
-                    this.$refs.canvas.width = this.$refs.video.videoWidth;
-                    this.$refs.canvas.height = this.$refs.video.videoHeight;
-                    context.drawImage(this.$refs.video, 0, 0, this.$refs.canvas.width, this.$refs.canvas.height);
-
-                    this.$refs.canvas.toBlob((blob) => {
-                        const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
+                    canvas.toBlob((blob) => {
+                        const file = new File([blob], "foto_absen.jpg", { type: "image/jpeg" });
                         
+                        // Upload ke Livewire
                         @this.upload('photo', file, (uploadedFilename) => {
-                            @this.call('store').then(() => {
+                            // Panggil store dengan parameter koordinat
+                            @this.store(this.myLat, this.myLng).then(() => {
                                 this.loading = false;
                             });
                         }, () => {
-                            alert('Gagal upload foto.');
+                            alert("Gagal upload foto.");
                             this.loading = false;
                         });
                     }, 'image/jpeg', 0.8);
                 },
 
-                forceRefreshLocation() {
-                    location.reload();
+                // Rumus Jarak Haversine
+                getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+                    var R = 6371; 
+                    var dLat = this.deg2rad(lat2-lat1);  
+                    var dLon = this.deg2rad(lon2-lon1); 
+                    var a = 
+                        Math.sin(dLat/2) * Math.sin(dLat/2) +
+                        Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+                    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+                    var d = R * c; 
+                    return d;
                 },
-
-                haversineDistance(coords1, coords2) {
-                    const toRad = x => x * Math.PI / 180;
-                    const R = 6371e3; // metres
-                    const dLat = toRad(coords2[0] - coords1[0]);
-                    const dLon = toRad(coords2[1] - coords1[1]);
-                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                            Math.cos(toRad(coords1[0])) * Math.cos(toRad(coords2[0])) *
-                            Math.sin(dLon/2) * Math.sin(dLon/2);
-                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                    return R * c;
-                }
+                deg2rad(deg) { return deg * (Math.PI/180) }
             }
         }
     </script>
-</div>
+</div>  
