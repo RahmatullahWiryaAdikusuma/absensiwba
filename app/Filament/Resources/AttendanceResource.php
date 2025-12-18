@@ -66,8 +66,8 @@ class AttendanceResource extends Resource
                     ->description(fn (Attendance $record) => $record->user->position->name ?? '-'),
 
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Tanggal')
-                    ->date('d M Y')  
+                    ->label('Tanggal / Periode')
+                    ->formatStateUsing(fn (Attendance $record) => $record->getWorkDateRange())
                     ->sortable(),
 
                 Tables\Columns\ColumnGroup::make('Kehadiran Masuk', [
@@ -109,8 +109,13 @@ class AttendanceResource extends Resource
                     ->color(fn (string $state): string => match ($state) {
                         'Tepat Waktu' => 'success',
                         'Terlambat' => 'danger',
-                    })
-                    ->description(fn (Attendance $record): string => $record->end_time ? 'Durasi: '.$record->workDuration() : 'Sedang Bekerja'),
+                    }),
+                
+                Tables\Columns\TextColumn::make('work_duration')
+                    ->label('Durasi Kerja')
+                    ->formatStateUsing(fn (Attendance $record) => $record->workDuration())
+                    ->description(fn (Attendance $record) => $record->end_time ? '✓ Selesai' : '⏱ Aktif')
+                    ->weight('bold'),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([ 

@@ -172,7 +172,7 @@ class Presensi extends Component
         $refLng = $schedule->is_wfa ? $longitude : $schedule->officeLocation->longitude;
 
         if ($activeAttendance) {
-            $activeAttendance->update([
+               $activeAttendance->update([
                 'end_latitude' => $latitude,
                 'end_longitude' => $longitude,
                 'end_time' => $now,
@@ -195,7 +195,7 @@ class Presensi extends Component
             event(new AttendanceRecorded($newAtt, 'check_in'));
             session()->flash('message', 'Absen Masuk Berhasil.');
         }
-
+        
         return redirect()->route('presensi');
     }
 }

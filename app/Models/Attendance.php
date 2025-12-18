@@ -58,7 +58,7 @@ class Attendance extends Model
     }
 
     /**
-     * Hitung durasi kerja
+     * Hitung durasi kerja (PERBAIKAN: Support multi-day attendance)
      */
     public function workDuration(): string
     {
@@ -68,8 +68,35 @@ class Attendance extends Model
 
         $start = Carbon::parse($this->start_time);
         $end = Carbon::parse($this->end_time);
+        $diff = $start->diff($end);
 
-        return $start->diff($end)->format('%H Jam %I Menit');
+        // Format dengan total hours dan minutes (support > 24 jam)
+        $days = $diff->days;
+        $hours = $diff->h;
+        $minutes = $diff->i;
+        
+        $totalHours = ($days * 24) + $hours;
+        
+        return "{$totalHours} Jam {$minutes} Menit";
+    }
+
+    /**
+     * Get display date range untuk attendance
+     */
+    public function getWorkDateRange(): string
+    {
+        if (!$this->end_time) {
+            return Carbon::parse($this->start_time)->format('d M Y');
+        }
+
+        $startDate = Carbon::parse($this->start_time)->format('d M Y');
+        $endDate = Carbon::parse($this->end_time)->format('d M Y');
+
+        if ($startDate === $endDate) {
+            return $startDate;
+        }
+
+        return "{$startDate} s/d {$endDate}";
     }
 
 
